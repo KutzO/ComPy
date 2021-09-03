@@ -1,0 +1,59 @@
+# Possible plotstyles: https://matplotlib.org/stable/gallery/style_sheets/style_sheets_reference.html
+
+# It is possible to add more colors to colorcode by including them like barplots:colorthresh (2 spaces at the begin!)
+
+# To change y axis limits of the plots just change ymax: "max" to ymax: somenumberofchoice
+
+# To change y axis scale from logarithmic to non-logarithmic just change e.g. coverageyscale: from "log" to "default"
+
+# If you want to change the marker please have a look here: https://matplotlib.org/stable/api/markers_api.html
+ 
+plotstyle: "seaborn"
+
+boxplots:
+ colorcode: 
+  - "#808080"
+ markercolor: "orange"
+ markerstyle: "x" 
+ coverageyscale: "log"
+ ymax: "max"
+
+barplots:
+ colorcode: 
+  - "#808080"
+ highest: 50
+ middle: 30
+ lower: 10
+ lowest: 1
+ colorthresh: 
+  - "#55a868"
+  - "#4c72b0"
+  - "#dd8452"
+  - "#c44e52"
+ vardistyscale: "log"
+ ymax: "max"
+
+pieplot:
+ highest: 300
+ middle: 100
+ lowest: 20
+ colorcode: 
+  - "#55a868"
+  - "#4c72b0"
+  - "#dd8452"
+  - "#c44e52"
+
+qcplot:
+ phredscore: "blue"
+ lengthdist: "orange"
+ stderivation: "lightblue"
+
+vennplots:
+ color1: "green"
+ color2: "blue"
+ color3: "red"
+ color4: "brown"
+ color5: "purple"
+
+tables:
+ colorcode: "#C0C0C0"

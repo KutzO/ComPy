@@ -1,0 +1,6 @@
+File,Name,Type
+./testdata/BadReadQual.bam,BadReadQual,bam
+./testdata/Default.bam,Default,bam
+./testdata/LowChr3.bam,LowChr3,bam
+./testdata/NoChr1.bam,NoChr1,bam
+./testdata/OffTarget.bam,OffTarget,bam
