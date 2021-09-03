@@ -1,0 +1,9 @@
+ID,Name,Type
+1,BadReadQual,bam
+3,LowChr3,bam
+5,OffTarget,bam
+1,Vcf_1,vcf
+2,Vcf_2,vcf
+3,Vcf_3,vcf
+4,Vcf_4,vcf
+5,Vcf_5,vcf

@@ -1,0 +1,14 @@
+ID,Name,Type
+1,BadReadQual,bam
+2,Default,bam
+3,LowChr3,bam
+4,NoChr1,bam
+5,OffTarget,bam
+1,Test1,vcf
+2,Test2,vcf
+3,Test3,vcf
+4,Test4,vcf
+5,Test5,vcf
+6,Test6,vcf
+7,Test7,vcf
+8,Test8,vcf
