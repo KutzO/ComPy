@@ -43,7 +43,7 @@ lsCompatibleVersions, argNameTable, argVcfPlotTable, argClass
 def CompToolCompare(tool, **kwargs):
         
         ###Prepare logger
-        comptoollog = logging.getLogger("ComparisonTool")
+        compylog = logging.getLogger("ComPy")
         
         """
         Prepare the data
@@ -66,7 +66,7 @@ def CompToolCompare(tool, **kwargs):
         """
         ###Calculate checksums        
         dicCheckSums = {}
-        comptoollog.info("Creating checksums")
+        compylog.info("Creating checksums")
         print("Create checksums (md5) of input data")
         
         #Calculate .bam checksums
@@ -81,8 +81,8 @@ def CompToolCompare(tool, **kwargs):
                 tmpCheckSum = job.get()
                 lsCheckSumBam.append(tmpCheckSum)
             for calcsum in lsCheckSumBam:
-                dicCheckSums[calcsum[0]] = calcsum[1]
-                comptoollog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
+                dicCheckSums[str(calcsum[0])] = [calcsum[1], "bam"]
+                compylog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
             
             pool.close()
 
@@ -91,14 +91,14 @@ def CompToolCompare(tool, **kwargs):
             lsCheckSumVcf = []
             pool = multiprocessing.Pool(processes=kwargs["argThreads"])
             Jobs = []
-            for file in kwargs["argBamfiles"]:
+            for file in kwargs["argVcffiles"]:
                 Jobs.append(pool.apply_async(TestHash, args=(file,)))
             for job in tqdm(Jobs):
                 tmpCheckSum = job.get()
                 lsCheckSumVcf.append(tmpCheckSum)
             for calcsum in lsCheckSumVcf:
-                dicCheckSums[calcsum[0]] = calcsum[1]
-                comptoollog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
+                dicCheckSums[calcsum[0]] = [calcsum[1], "vcf"]
+                compylog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
             
             pool.close()
         #sys.exit()
@@ -114,7 +114,7 @@ def CompToolCompare(tool, **kwargs):
         #         lsCheckSumBam.append(tmpCheckSum[:])
         #     for calcsum in lsCheckSumBam:
         #         dicCheckSums[calcsum[0]] = calcsum[1]
-        #         comptoollog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
+        #         compylog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
             
         #     pool.close()
         
@@ -134,7 +134,7 @@ def CompToolCompare(tool, **kwargs):
         #         lsCheckSumVcf.append(job.get())
         #     for calcsum in lsCheckSumVcf:
         #         dicCheckSums[calcsum[0]] = calcsum[1]
-        #         comptoollog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
+        #         compylog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
         #     pool.close()
 
 
@@ -153,7 +153,7 @@ def CompToolCompare(tool, **kwargs):
                 vcf=kwargs["argVcffiles"], ReduceBed=kwargs["argReduce"], 
                 version=kwargs["strVersion"], checksum = dicCheckSums, 
                 nameTable = kwargs["argNameTable"], 
-                FileClass= kwargs["argClass"]
+                FileClass= kwargs["argClass"], styleyaml = kwargs["argyaml"]
             )     
         elif tool == "bam":
             classPrep = DataPreparation(
@@ -163,7 +163,7 @@ def CompToolCompare(tool, **kwargs):
                 dtime=kwargs["dtime"], outputpath=kwargs["argOutput"], 
                 ReduceBed=kwargs["argReduce"], version=kwargs["strVersion"], 
                 checksum = dicCheckSums, nameTable = kwargs["argNameTable"], 
-                FileClass= kwargs["argClass"]
+                FileClass= kwargs["argClass"], styleyaml = kwargs["argyaml"]
             ) 
         elif tool == "vcf":
             classPrep = DataPreparation(
@@ -172,35 +172,52 @@ def CompToolCompare(tool, **kwargs):
                 outputpath = kwargs["argOutput"], vcf = kwargs["argVcffiles"], 
                 version = kwargs["strVersion"], checksum = dicCheckSums, 
                 nameTable = kwargs["argNameTable"], 
-                FileClass = kwargs["argClass"], bed = kwargs["argBedfile"]
+                FileClass = kwargs["argClass"], bed = kwargs["argBedfile"],
+                styleyaml = kwargs["argyaml"]
             )     
-        
+
         """
         4) Generate index files (if --index was parsed)
         """
         ###If index files has to be created
         if tool in ["bam", "all"]: 
             if kwargs["argIndex"]:
-                comptoollog.info(
+                compylog.info(
                     "Index files will be created! This will take some time...."
                 )
                 print("Creating index files")
                 pool = multiprocessing.Pool(processes=kwargs["argThreads"])
                 lsJobs = []
-                for intID in classPrep.dicIDs:
-                    if classPrep.dicIDs[intID][0] in \
-                            classPrep.bamnamestodb:
+                for lsValues in classPrep.dicIDs["bam"].values():
+                    if lsValues[0] in classPrep.bamnamestodb:
+                        # print(lsValues[1])
                         lsJobs.append(
                             pool.apply_async(
-                                pysam.index, args=(
-                                            classPrep.dicIDs[intID][1],
-                                             )
+                                pysam.index, args = (lsValues[1],)
                             )
                         )
                 for job in tqdm(lsJobs):
                     job.get()
                 pool.close()
-                comptoollog.info("Finished creating index file")
+                compylog.info("Finished creating index file")
+                    
+                #     print(lsValues)
+                # sys.exit()
+                # for intID in classPrep.dicIDs:
+                #     print(classPrep.dicIDs.keys())
+                #     if classPrep.dicIDs["bam"][intID][0] in \
+                #             classPrep.bamnamestodb:
+                #         lsJobs.append(
+                #             pool.apply_async(
+                #                 pysam.index, args=(
+                #                             classPrep.dicIDs[intID][1],
+                #                              )
+                #             )
+                #         )
+                # for job in tqdm(lsJobs):
+                #     job.get()
+                # pool.close()
+                # compylog.info("Finished creating index file")
     
     
     
@@ -234,12 +251,12 @@ def CompToolCompare(tool, **kwargs):
         ###Initialize the class ExtractFromBam for each parsed .bam file
         if tool in ["all", "bam"]:
             listOfBamClasses = []
-            for intID in classPrep.dicIDs.keys():
-                if classPrep.dicIDs[intID][0] in classPrep.bamnamestodb:
+            for intID in classPrep.dicIDs["bam"].keys():
+                if classPrep.dicIDs["bam"][intID][0] in classPrep.bamnamestodb:
                 #Class ExtractInfoData is defined in script ExtractFromBam.py
                     ExtractProg = ExtractInfoData(
-                        classPrep.dicIDs[intID][1], 
-                        classPrep.dicIDs[intID][0], 
+                        classPrep.dicIDs["bam"][intID][1], 
+                        classPrep.dicIDs["bam"][intID][0], 
                         kwargs["argReference"], kwargs["argThreads"], 
                         classPrep.dictTargets, classPrep.bedid, 
                         classDataBase.pathDB, kwargs["argSubsamples"], 
@@ -250,7 +267,7 @@ def CompToolCompare(tool, **kwargs):
                     listOfBamClasses.append(ExtractProg)
             
             for BamClass in listOfBamClasses:
-                comptoollog.info(
+                compylog.info(
                     f"Start Extraction from BAMfile: {BamClass.bam}"
                 )
                 print(f"Start Extraction from BAMfile: {BamClass.bam}")
@@ -269,9 +286,9 @@ def CompToolCompare(tool, **kwargs):
         """
         if tool in ["all", "vcf"]:
             if len(classPrep.vcfnames) != 0: 
-                print(len(classPrep.vcfnames))
+                # print(len(classPrep.vcfnames))
                 #sys.exit()
-                comptoollog.info("Extracting .vcf files")
+                compylog.info("Extracting .vcf files")
                 print("Extracting .vcf files")
                 VCFextraction = ExtractFromVCF( 
                     kwargs["argThreads"], classPrep.bedid, classDataBase.pathDB, 
@@ -284,22 +301,17 @@ def CompToolCompare(tool, **kwargs):
         """
         3) Plotting the data
         """
-        comptoollog.info("Plotting data")
+        compylog.info("Plotting data")
         print("Plotting data")
         
         if tool == "all":
         #Class is defined in script PlotData.py
             PlotClass = PlotTheData(
                 tool, classPrep.outputpathTmp, classPrep.outputpath, 
-                classDataBase.pathDB, reduceBed = kwargs["argReduce"],
-                bamnames = classPrep.allbamnames, 
-                subsamples = kwargs["argSubsamples"], 
-                threads = kwargs["argThreads"], 
-                variants = classPrep.allvcfnames, bedid = classPrep.bedid,
-                samplenumber = len(classPrep.allbamnames), 
-                dicIDs = classPrep.dicIDs, vcfdata = classPrep.allvcfnames,
+                classDataBase.pathDB, threads = kwargs["argThreads"],  
+                dicIDs = classPrep.dicIDs, 
                 VcfPlotTable = kwargs["argVcfPlotTable"], 
-                FileClass = kwargs["argClass"]
+                styleyaml = classPrep.styleyaml
             )
 
 
@@ -307,13 +319,8 @@ def CompToolCompare(tool, **kwargs):
         if tool == "bam":
             PlotClass = PlotTheData(
                 tool, classPrep.outputpathTmp, classPrep.outputpath, 
-                classDataBase.pathDB, reduceBed = kwargs["argReduce"], 
-                bamnames = classPrep.allbamnames, 
-                subsamples = kwargs["argSubsamples"], 
-                threads = kwargs["argThreads"], 
-                samplenumber = len(classPrep.allbamnames), 
-                bedid = classPrep.bedid, dicIDs = classPrep.dicIDs, 
-                FileClass= kwargs["argClass"]
+                classDataBase.pathDB, threads = kwargs["argThreads"], 
+                dicIDs = classPrep.dicIDs, styleyaml = classPrep.styleyaml
             )
 
 
@@ -322,11 +329,9 @@ def CompToolCompare(tool, **kwargs):
             PlotClass = PlotTheData(
                 tool, classPrep.outputpathTmp, classPrep.outputpath, 
                 classDataBase.pathDB, threads = kwargs["argThreads"], 
-                samplenumber = len(classPrep.vcfnames), 
-                variants = classPrep.allvcfnames, bedid = classPrep.bedid, 
-                dicIDs = classPrep.dicIDs, vcfdata = classPrep.allvcfnames, 
-                VcfPlotTable = kwargs["argVcfPlotTable"], 
-                FileClass= kwargs["argClass"]
+                dicIDs = classPrep.dicIDs, 
+                VcfPlotTable = kwargs["argVcfPlotTable"],
+                styleyaml = classPrep.styleyaml
             )
         
         """
@@ -339,12 +344,10 @@ def CompToolCompare(tool, **kwargs):
         """
         5) Compare each sample with whole database
         """
-        
         if tool in ["all", "bam"]:
             print("Start individual comparison")
             PlotCompAll(
-                classDataBase.pathDB, classPrep.allbamnames, classPrep.bedid, 
-                kwargs["argSubsamples"], kwargs["argReduce"], kwargs["dtime"], 
+                classDataBase.pathDB, kwargs["dtime"], 
                 classPrep.outputpath, kwargs["argThreads"], 
-                classPrep.dicIDs, kwargs["argClass"]
+                classPrep.dicIDs, classPrep.styleyaml
             )

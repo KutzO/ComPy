@@ -8,7 +8,7 @@ import statistics
 import math
 from .DbManager import DBManager
 import logging
-
+import sys
 
 """
 Class for extracting all data from given .bam files
@@ -41,9 +41,9 @@ class ExtractInfoData():
             self.FileClass = "Default"
             
         #Initiale logging tool
-        self.comptoollog = logging.getLogger("ComparisonTool")
+        self.compylog = logging.getLogger("ComPy")
         
-        self.comptoollog.info("Getting number of reads per chromosome")
+        self.compylog.info("Getting number of reads per chromosome")
         self.GetReadNumbers()
         #self.test = test
             
@@ -58,24 +58,22 @@ class ExtractInfoData():
                     z[3]  for z in bamfile.get_index_statistics() \
                     if z[0] == chromosome
                 ][0]
-                mapped=[
+                mapped = [
                     z[1]  for z in bamfile.get_index_statistics() \
                     if z[0] == chromosome
                 ][0]
-                unmapped=[
+                unmapped = [
                     z[2]  for z in bamfile.get_index_statistics() \
                     if z[0] == chromosome
                 ][0]
-                lsDF.append([
-                    self.bamname, self.ID, self.bedid, chromosome, total, \
-                    mapped, unmapped, self.strReduce, \
-                    self.subsample, self.FileClass
-                ])
+                lsDF.append(
+                    [self.bamname, self.ID, chromosome, total, 
+                    mapped, unmapped]
+                )
        
         #Transfer the dictionary to a dataframe
         columnnames = [
-            "BAM","BedID","Chrom", "Total", "Mapped", "Unmapped", \
-            "Reduced", "Subsamples", "FileClass", "Checksum"
+            "BAM", "ID", "Chrom", "Total", "Mapped", "Unmapped"
         ]
         dfSave = pd.DataFrame(lsDF,columns = columnnames)
         #Adding information about mapped reads to database
@@ -109,16 +107,16 @@ class ExtractInfoData():
             try:
                 trgsizenorm[trgsizenorm.index(max(trgsizenorm))] += intDif
             except Exception as e:
-                self.comptoollog.info(
+                self.compylog.info(
                                 "An exception occured while"
                                 +" calculating subsamples!"
                                         )
-                self.comptoollog.info(
+                self.compylog.info(
                                 f"Targetsize normalized: {trgsizenorm};"
                                 +f" Chromosome: {chromo}; "
                                 +f"Number of targets: {num_targets}"
                                         )
-                self.comptoollog.exception(e)
+                self.compylog.exception(e)
         
         
         for chromo in self.dicTargets.keys():
@@ -163,18 +161,18 @@ class ExtractInfoData():
         dictLenRev = {}
         
         #Logging extraction parameters 
-        self.comptoollog.info(f"Reduced .bed file targets: {self.strReduce}")
-        self.comptoollog.info("Number of read samples per chromosome for "
+        self.compylog.info(f"Reduced .bed file targets: {self.strReduce}")
+        self.compylog.info("Number of read samples per chromosome for "
                               +f"QC: {self.subsample}"
         )
         
         
         ##Start extraction  
-        pool = multiprocessing.Pool(processes=self.threads)
+        pool = multiprocessing.Pool(processes = self.threads)
            
         #Define multiprocessing to extract read statistics + QC data with function GetReadStatistics()
         lsJobs = [pool.apply_async(self.GetReadStatistics, 
-                                   args=(
+                                   args = (
                                        self.dicTargets[chromosom], 
                                        chromosom, 
                                        subsamples[chromosom]
@@ -190,16 +188,13 @@ class ExtractInfoData():
             RowAdd = []
             chromosom, targets, lsTotal, lsOnTrg, lsmeanc, gc, lsPHRED, \
                 lsOrientation, dLenFwd, dLenRev = job.get()
-            self.comptoollog.info(f"Chromosom: {chromosom}")
+            self.compylog.info(f"Chromosom: {chromosom}")
             for data in zip(targets, lsTotal, lsOnTrg, lsmeanc, gc):
                 RowAdd.append(
-                                [
-                            self.bamname, self.ID, self.bedid, str(chromosom), 
-                            str(data[0][0]), str(data[0][1]), 
-                            str(data[1]), str(data[2]), str(data[3]), 
-                            str(data[4]), self.strReduce, 
-                            self.subsample, self.FileClass
-                            ]
+                                [self.bamname, self.ID, str(chromosom), 
+                                 str(data[0][0]), str(data[0][1]), 
+                                 str(data[1]), str(data[2]), str(data[3]), 
+                                 str(data[4])]
                 )
             tmpPHRED = [y[:] for y in lsPHRED]
             tmpOri = [x[:] for x in lsOrientation]
@@ -236,27 +231,27 @@ class ExtractInfoData():
         
         
         ##Calculate length distribution and normalize it (max 1 --> 100% of the reads showing the corresponding length)
-        allreadsFwd = sum(dictLenFwd.values())
-        self.comptoollog.info(
-            "\n Calculating read length distribution from a number of"
-            +f" {allreadsFwd} reads flagged as mate 1!"
-        )
-        print("Calculating read length distribution")
-        for keys in tqdm(dictLenFwd.keys()):
-            dictLenFwd[keys] = dictLenFwd[keys]/allreadsFwd                    #Normalize the data
-        self.comptoollog.info("Done \n")
-        allreadsRev = sum(dictLenRev.values())
-        self.comptoollog.info(
-            "\n Calculating read length distribution from a number of "
-            +f"{allreadsRev} reads flagged as mate 2!"
-        )
-        for keys in tqdm(dictLenRev.keys()):
-            dictLenRev[keys] = dictLenRev[keys]/allreadsRev                    #Normalize the data
-        self.comptoollog.info("Done \n")
+        # allreadsFwd = sum(dictLenFwd.values())
+        # self.compylog.info(
+            # "\n Calculating read length distribution from a number of"
+            # +f" {allreadsFwd} reads flagged as mate 1!"
+        # )
+        # print("Calculating read length distribution")
+        # for keys in tqdm(dictLenFwd.keys()):
+            # dictLenFwd[keys] = dictLenFwd[keys]/allreadsFwd                    #Normalize the data
+        # self.compylog.info("Done \n")
+        # allreadsRev = sum(dictLenRev.values())
+        # self.compylog.info(
+            # "\n Calculating read length distribution from a number of "
+            # +f"{allreadsRev} reads flagged as mate 2!"
+        # )
+        # for keys in tqdm(dictLenRev.keys()):
+            # dictLenRev[keys] = dictLenRev[keys]/allreadsRev                    #Normalize the data
+        # self.compylog.info("Done \n")
         
         
         ##Calculate PHRED scores
-        self.comptoollog.info("Calculating mean PHRED scores!")
+        self.compylog.info("Calculating mean PHRED scores!")
         
         #Sort data according to read mate 1 (fwd) and read mate 2 (rev)
         lsPHREDfwd = []
@@ -311,7 +306,7 @@ class ExtractInfoData():
         lsMeanREV.sort(key= lambda x: x[1])
         lsSDErev.sort(key = lambda x: x[1])
 
-        self.comptoollog.info("Done! \n")
+        self.compylog.info("Done! \n")
         return lsMeanFWD, lsSDEfwd, lsMeanREV,lsSDErev, dictLenFwd, dictLenRev
 
 
@@ -366,13 +361,13 @@ class ExtractInfoData():
                 try:
                     lsRandom = lsRandom[0:int(subsamples)]
                 except Exception as e:
-                    self.comptoollog.info(
+                    self.compylog.info(
                         "An error occured at generating random subsamples!"
                     )
-                    self.comptoollog.info(
+                    self.compylog.info(
                         f"Number of subsamples: {int(subsamples)}"
                     )
-                    self.comptoollog.exception(e)
+                    self.compylog.exception(e)
                 lsRandom.sort()
                 lsRandom.append(0)  #To go on after collecting the last read!
                 
@@ -433,7 +428,7 @@ class ExtractInfoData():
                 try:
                     mReadLFwd = sum(lsLenTotal)/len(lsLenTotal)
                 except:
-                    self.comptoollog.info(f"No reads found at target: {target}")
+                    self.compylog.info(f"No reads found at target: {target}")
                     mReadLFwd = 0
                 lsLenTotal = []
                 for length in dicReadLenRev.keys():
@@ -447,7 +442,7 @@ class ExtractInfoData():
                 
                 
                 meanc = OnTrg *(mReadLFwd + mReadLRev) \
-                        / abs(target[0] - 1 - target[1])
+                        / abs(target[0] - target[1])
                 lsmeanc.append(meanc)
 
             return chromosom, targets, lsTotal, lsOnTrg, lsmeanc, gc, \
@@ -492,7 +487,7 @@ class ExtractInfoData():
 
 
     ###Save QC information and information about mapped reads
-    #Called by main program (ComparisonTool.py)
+    #Called by main program (ComPy.py)
     def SavePhredLen(self, lsMeanPhredFwd, lsStdDevPhredFwd,lsMeanPhredRev, 
                      lsStdDevPhredRev, dicReadLenFwd, dicReadLenRev):   
         
@@ -505,11 +500,10 @@ class ExtractInfoData():
         for entry in zip(lsMeanPhredFwd, lsStdDevPhredFwd, lsLenValuesFwd):
             DBadd = list(entry)
             data.append(
-                        [self.bamname, self.ID, self.bedid] \
+                        [self.bamname, self.ID] \
                         +[PosCount] \
                         +[DBadd[0][0], 
-                          DBadd[1][0], DBadd[2], "1", self.strReduce, 
-                          self.subsample, self.FileClass
+                          DBadd[1][0], DBadd[2], "1"
                           ]
             )
             PosCount += 1
@@ -524,11 +518,10 @@ class ExtractInfoData():
         for entry in zip(lsMeanPhredRev, lsStdDevPhredRev, lsLenValuesRev):
             DBadd = list(entry)
             data.append(
-                        [self.bamname, self.ID, self.bedid] \
+                        [self.bamname, self.ID] \
                         + [PosCount]  \
                         + [DBadd[0][0], 
-                           DBadd[1][0], DBadd[2], "2", self.strReduce, 
-                           self.subsample, self.FileClass
+                           DBadd[1][0], DBadd[2], "2"
                            ]
             )
             PosCount += 1
@@ -536,8 +529,7 @@ class ExtractInfoData():
         
         #Adding information that the bam file was processed (and which bed file is used)
         DBManager.SecurityChangeData(
-            self.pathDB, self.ID, self.bedid, self.version, "bam", 
-            self.strReduce, self.subsample
+            self.pathDB, self.ID, self.version, "bam"
         )
         
 
