@@ -18,16 +18,16 @@ class ExtractFromVCF():
         self.dtime = dtime
         
         self.dicIDs = {}
-        for intID in dicIDs.keys():
-            if dicIDs[intID][2] == "vcf":
-                self.dicIDs[intID] = dicIDs[intID]
+        for intID in dicIDs["vcf"].keys():
+            self.dicIDs[intID] = dicIDs["vcf"][intID]
+        
         if FileClass:
             self.FileClass = FileClass
         else:
             self.FileClass = "Default"
         
         #Initiale logging tool
-        self.comptoollog = logging.getLogger("ComparisonTool")
+        self.compylog = logging.getLogger("ComPy")
  
     
 
@@ -54,12 +54,12 @@ class ExtractFromVCF():
                     )
                 )
             except Exception as e:
-                self.comptoollog.info("An error occured at extracting variants!")
-                self.comptoollog.exception(e)
+                self.compylog.info("An error occured at extracting variants!")
+                self.compylog.exception(e)
                 pass
         
         #Start the subprocesses and call DBManager.InsertData() defined in script DbManager.py
-        self.comptoollog.info("Extracting information from given VCF files!")
+        self.compylog.info("Extracting information from given VCF files!")
         print("Extract data from .vcf files")
         for _ in tqdm(jobs):
             result, intID = _.get()
@@ -67,7 +67,7 @@ class ExtractFromVCF():
             DBManager.InsertData(result,"Extracted_Variants", self.pathDB)
             #DBManager.InsertData(sortedout, "Sorted_out", self.pathDB)
             DBManager.SecurityChangeData(
-                self.pathDB, intID, self.bedid, self.version, "vcf"
+                self.pathDB, intID, self.version, "vcf"
             )
         pool.close()
         
@@ -129,12 +129,11 @@ class ExtractFromVCF():
                         else:
                             intAD = allAD[0]
                         COUNTER_ALT_ALLELES += 1
-                        
+                        intAF = intAD / intDP
                         lsResult.append(
-                            [strName, strID, self.bedid, strId, strChr, 
+                            [strName, strID, strId, strChr, 
                             strPos, strLen, strRef, alt, strType,
-                            strGenot, intDP, intAD, strSample, strANN, 
-                            self.FileClass]
+                            strGenot, intDP, intAD, intAF, strSample, strANN]
                         )
                         
                     SAMPLE_COUNTER += 1

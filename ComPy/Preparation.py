@@ -7,14 +7,17 @@ import logging
 import csv
 from glob import glob
 import getpass
+import yaml
+
 
 
 class DataPreparation:
     def __init__(self, tool, bam=False, DBpath=False, booDB=False, bed=False, 
-                 subsample=False, dtime=False, outputpath=False, vcf = False, 
+                 subsample=False, dtime=False, outputpath = False, vcf = False, 
                  ReduceBed = False, version = False, checksum = False, 
                  nameTable = False, vcfPlot = False, FileClass = False,
-                 intID = False, Datatype = False):
+                 intID = False, Datatype = False, lsbamid = False,
+                 lsvcfid = False, styleyaml = False):
         
         self.dbpath = DBpath
         self.booDB = booDB
@@ -28,7 +31,7 @@ class DataPreparation:
             self.FileClass = "Default"
         
         #Initiale logging tool
-        self.comptoollog = logging.getLogger("ComparisonTool")
+        self.compylog = logging.getLogger("ComPy")
         
         
         
@@ -37,60 +40,156 @@ class DataPreparation:
             ##Identify outputpath
             self.outputpathTmp, self.outputpath = self.FindOutputPath(
                                                         outputpath
-                                                  )
+            )
             self.PrepareCompare(
-                bed, ReduceBed, bam, vcf, checksum, nameTable
+                bed, ReduceBed, bam, vcf, checksum, nameTable, styleyaml
             )
             
-        elif tool == "extract":
+        elif tool == "extract" or tool == "delete":
             ##Identify outputpath
             #self.outputpathTmp, self.outputpath = self.FindOutputPath(
             #                                            outputpath
             #                                      )
-            self.PrepareExtraction(
-                nameTable, intID
+            self.PrepareExtractionDeletion(
+                nameTable, lsbamid, lsvcfid
             )
             
-        elif tool == "delete":
-            self.PrepareDeletion(
-                Datatype, intID, nameTable
+        # elif tool == "delete":
+            # self.PrepareDeletion(
+                # Datatype, intID, nameTable
+            # )
+            
+        elif tool == "plot":
+            ##Identify outputpath
+            self.outputpathTmp, self.outputpath = self.FindOutputPath(
+                                                        outputpath
+            )
+            self.PreparePlot(
+                lsbamid, lsvcfid, nameTable, styleyaml
             )
             
+    
+    
+    
+    
+    """
+    Prepare data plotting
+    """     
+    def PreparePlot(self, lsbamid, lsvcfid, nameTable, argyamlpath):
+        #Prepare style dict for plotting
+        self.PrepareStyleYaml(argyamlpath)
+        
+        ##Prepare id dataframe
+        if nameTable:
+            dfData = pd.read_csv(nameTable)
+        else:
+            dfData = pd.DataFrame()
+            lsIDs = []
+            lsType = []
+            lsNames = []
+            if lsbamid:
+                lsIDs = lsIDs + lsbamid
+                lsType = lsType + ["bam" for x in lsbamid]
+                lsNames = lsNames + [f"Bam_{x}" for x in lsbamid]
+            if lsvcfid:
+                lsIDs = lsIDs + lsvcfid
+                lsType = lsType + ["vcf" for x in lsvcfid]
+                lsNames = lsNames + [f"Vcf_{x}" for x in lsvcfid]
+            # lsIDs = lsbamid + lsvcfid
+            # lsType = []
+            # if lsbamid:
+                
+            # if lsvcfid:
+                
+            # lsType = ["bam" for x in lsbamid] + ["vcf" for x in lsvcfid]
             
             
-            
+            # lsNameVcf = [f"Vcf_{x}" for x in lsvcfid]
+            # lsNames = lsNameBam + lsNameVcf 
+            dfData["ID"] = lsIDs
+            dfData["Type"] = lsType
+            dfData["Name"] = lsNames
+        pathCSV = glob(self.outputpath + "NameList.csv")
+        try:
+            pathCSV[0]
+            mode = "a"
+        except:
+            mode = "w"
+        with open(
+                self.outputpath+"NameList.csv", f"{mode}"
+                ) as csvfile:
+            writedata = csv.writer(csvfile)
+            if mode == "w":
+                writedata.writerow(dfData.columns)
+            writedata.writerows(dfData.values)
+                # print(self.dfData)
+        self.dicIDs = {}
+        if "bam" in dfData["Type"].values:
+            dfSliceData = dfData.loc[dfData["Type"] == "bam"]
+            self.FillDictionary(dfSliceData, "bam")
+        if "vcf" in dfData["Type"].values:
+            dfSliceData = dfData.loc[dfData["Type"] == "vcf"]
+            self.FillDictionary(dfSliceData, "vcf")
+        #print(self.dicIDs)
+    
+    
+    
+    
+    def FillDictionary(self, data, filetype):
+        self.dicIDs[filetype] = {}
+        #print(data)
+        for entry in zip(
+                data["ID"], 
+                data["Name"],
+                data["Type"]
+                ):
+            # print(entry)
+            self.dicIDs[filetype][int(entry[0])] = [
+                                    entry[1], entry[2]
+                                    ]
+        
+        
+        
+        
     """
     Prepare deletion of data from database
     """
-    def PrepareDeletion(self, Datatype, intID, nameTable):
+    def PrepareExtractionDeletion(self, nameTable, bamids, vcfids):
         if nameTable:
             df = pd.read_csv(nameTable)
-            if len(list(df.columns)) == 8:
-                self.vcf = True
-            elif len(list(df.columns)) == 10:
-                self.vcf = False
-            self.ID = df["ID"].values
+            self.dicIDs = {}
+            # for intID in bamids:
+            self.dicIDs["bam"] = list(
+                df.loc[df["Type"] == "bam"]["ID"]
+            )
+            self.dicIDs["vcf"] = list(
+                df.loc[df["Type"] == "vcf"]["ID"]
+            )
+            #if len(list(df.columns)) == 8:
+            #    self.vcf = True
+            #elif len(list(df.columns)) == 10:
+            #    self.vcf = False
+            #self.ID = df["ID"].values
             
         else:
-            self.ID = intID
-            print(self.ID)
-            if Datatype == "bam":
-                self.vcf = False
-            elif Datatype == "vcf":
-                self.vcf = True
+            self.dicIDs = {}
+            # for intID in bamids:
+            self.dicIDs["bam"] = bamids
+            self.dicIDs["vcf"] = vcfids
 
 
-    """
-    Prepare data extraction from database
-    """
+    # """
+    # Prepare data extraction from database
+    # """
     
-    def PrepareExtraction(self, nameTable, intID):
-        if nameTable:
-            dfNameData = pd.read_csv(nameTable)
-            self.ID = dfNameData["ID"].values
+    # def PrepareExtraction(self, nameTable, intID):
+        # if nameTable:
+            # dfNameData = pd.read_csv(nameTable)
+            # self.ID = list(dfNameData["ID"])
+            # self.type = list(dfNameData["Type"])
             
-        else:
-            self.ID = intID
+        # else:
+            # self.ID = intID
             # self.CollectInfoForExtraction(
             #     bed, ReduceBed, checksum, FileClass
             # )
@@ -131,7 +230,12 @@ class DataPreparation:
     
     
         
-    def PrepareCompare(self, bed, ReduceBed, bam, vcf, checksum, nameTable):
+    def PrepareCompare(self, bed, ReduceBed, bam, vcf, checksum, nameTable,
+                       argyamlpath):
+        
+        #Prepare style dict for plotting
+        self.PrepareStyleYaml(argyamlpath)
+        
         ##Identify targets present in given BED file
         #Optional: Reduce number of targets
         if bed:
@@ -149,6 +253,9 @@ class DataPreparation:
         
         ##Extract .bam names and pathes from parsed arguments
         self.dicIDs = {}
+        #print(bam)
+        #print(vcf)
+        #print(nameTable)
         if bam:
             self.bamnamestodb, self.allbamnames = self.LookAtArgsCompare(
                 bam, "bam", checksum, nameTable
@@ -168,12 +275,66 @@ class DataPreparation:
             self.allvcfnames = False
 
 
-
+    
+    def PrepareStyleYaml(self, argyamlpath):
+        if argyamlpath:
+            with open(argyamlpath, "r") as streamfile:
+                self.styleyaml = yaml.load(
+                    streamfile, Loader = yaml.FullLoader
+                )
+        else:
+            self.styleyaml = {}
+            self.styleyaml["plotstyle"] = "seaborn" 
+            self.styleyaml["boxplots"] = {}
+            self.styleyaml["boxplots"]["colorcode"] = ["#808080"]
+            self.styleyaml["boxplots"]["markercolor"] = "orange"
+            self.styleyaml["boxplots"]["markerstyle"] = "x"
+            self.styleyaml["boxplots"]["coverageyscale"] = "log"
+            self.styleyaml["boxplots"]["ymax"] = "max"
+            
+            self.styleyaml["pieplot"] = {}
+            self.styleyaml["pieplot"]["highest"] = 300
+            self.styleyaml["pieplot"]["middle"] = 100
+            self.styleyaml["pieplot"]["lowest"] = 20
+            self.styleyaml["pieplot"]["colorcode"] =  [
+                "#55a868", "#4c72b0", "#dd8452", "#c44e52"
+            ]
+            
+            self.styleyaml["qcplot"] = {}
+            self.styleyaml["qcplot"]["phredscore"] = "blue"
+            self.styleyaml["qcplot"]["lengthdist"] = "orange"
+            self.styleyaml["qcplot"]["stderivation"] = "lightblue"
+            
+            self.styleyaml["barplots"] = {}
+            self.styleyaml["barplots"]["vardistyscale"] = "log"
+            self.styleyaml["barplots"]["colorcode"] = ["#808080"]
+            self.styleyaml["barplots"]["highest"] = 50
+            self.styleyaml["barplots"]["middle"] = 30
+            self.styleyaml["barplots"]["lower"] = 10
+            self.styleyaml["barplots"]["lowest"] = 1
+            self.styleyaml["barplots"]["colorthresh"] =  [
+                "#55a868", "#4c72b0", "#dd8452", "#c44e52"
+            ]
+            self.styleyaml["barplots"]["ymax"] = "max"
+            
+            self.styleyaml["vennplots"] = {}
+            self.styleyaml["vennplots"]["color1"] = "green"
+            self.styleyaml["vennplots"]["color2"] = "blue"
+            self.styleyaml["vennplots"]["color3"] = "red"
+            self.styleyaml["vennplots"]["color4"] = "brown"
+            self.styleyaml["vennplots"]["color5"] = "purple"
+            
+            self.styleyaml["tables"] = {}
+            self.styleyaml["tables"]["colorcode"] = "#C0C0C0"
+    
+    
+    
+    
+    
     
     ###Define outputpath and create temp folders
     def FindOutputPath(self, outputpath):
         ##Define path
-        UserID = getpass.getuser()
         if outputpath:
             if outputpath[:2] == ".." or outputpath[:2] == "./":
                 strOutput = os.getcwd() + "/"+outputpath
@@ -186,24 +347,25 @@ class DataPreparation:
             strOutputTmp = strOutput + f"tmp/{self.dtime}/"
             strOutput = strOutput + f"Result_{self.dtime}/"
         else:
+            UserID = getpass.getuser()
             strOutputTmp = str(
-                f"/home/{UserID}/ComparisonTool/tmp/{self.dtime}/"
+                f"/home/{UserID}/ComPy/tmp/{self.dtime}/"
             )
             strOutput = str(
-                f"/home/{UserID}/ComparisonTool/Result_{self.dtime}/"
+                f"/home/{UserID}/ComPy/Results/Result_{self.dtime}/"
             )
         ##Create folders
         
-        self.comptoollog.info(f"Create output folder (tmp): {strOutputTmp}")
+        self.compylog.info(f"Create output folder (tmp): {strOutputTmp}")
         if not os.path.exists(strOutputTmp):
             os.makedirs(strOutputTmp)
         
-        self.comptoollog.info(f"Create output folder (results): {strOutput}")
+        self.compylog.info(f"Create output folder (results): {strOutput}")
         if not os.path.exists(strOutput):
             os.makedirs(strOutput)
         
         strOutputBigComp = strOutput+"BigCompare/"
-        self.comptoollog.info("Create output folder "
+        self.compylog.info("Create output folder "
                               +f"(DBcomp): {strOutputBigComp}"
         )
         if not os.path.exists(strOutputBigComp):
@@ -235,7 +397,7 @@ class DataPreparation:
                 try:
                     lsChromInt.append(int(chromos))
                 except Exception as e:
-                    self.comptoollog.info(
+                    self.compylog.info(
                         f"A chromosome in .bed file was not integer: {chromos}"
                     )
                     lsChromStr.append(str(chromos))
@@ -311,10 +473,10 @@ class DataPreparation:
                     
                     if booCheck:                            #booCheck will be false if mismatch was found
                         if len(bedinfo) == len(lsNewBed):   #Make sure that parsed .bed and .bed from database has same length!
-                            self.comptoollog.info(
+                            self.compylog.info(
                                 "Given BED file was already added to database!"
                             )
-                            self.comptoollog.info(
+                            self.compylog.info(
                                 f"BED file ID is: {bedid}"
                             )
                             bedid = bedid
@@ -322,14 +484,14 @@ class DataPreparation:
                         else:
                             booCheck = False
             if not booCheck:       #If no similar .bed files can be found in database
-                self.comptoollog.info(
+                self.compylog.info(
                     "The given BED file was not yet added to the database!"
                 )
                 
                 intID = max(lsAllids) + 1     
                 #print(intID)
                 bedid = intID
-                self.comptoollog.info(f"The BED-ID is: {bedid}")
+                self.compylog.info(f"The BED-ID is: {bedid}")
                 self.AddBedToDatabase(bedid)
                 #Adding new .bed targets to database 
             return bedid
@@ -345,6 +507,11 @@ class DataPreparation:
                 )
         DBManager.InsertData(lsADD,"Bedfiles", self.dbpath)  
         DBManager.InsertData([bedid, self.dtime], "BedInfo", self.dbpath)
+        
+        
+        
+        
+        
         
         
     ###Function to reduce the .bed file
@@ -379,82 +546,275 @@ class DataPreparation:
         lsArgnameToDb = []
         lsArgnameComplete = []
         dfNames = self.GetNames(
-            nameTable, parsedargs, filetype
+            nameTable, parsedargs, filetype, dicChecksum
         )
-        
+        self.dicIDs[filetype] = {}
         for checksum in dicChecksum.keys():
-            booAdd, self.ID = self.DbAddAdapter(
-                checksum, filetype
-            )
-            argname = dfNames.loc[
-                            dfNames["File"] == \
-                            dicChecksum[checksum]
-                        ]["Name"].values[0]
-            if booAdd:
-                lsArgnameToDb.append(argname)
-                self.DbInsertNewAdapter(
-                    argname, checksum, filetype
+            if dicChecksum[checksum][-1] == filetype:
+            
+                booAdd, self.ID = self.CheckDB(
+                    self.bedid, self.dbpath, checksum, filetype, self.Reduce, 
+                    self.subsample, self.FileClass
                 )
-                lsArgnameComplete.append(argname)
-                self.dicIDs[self.ID] = [
-                    argname, dicChecksum[checksum], filetype
-                ]
-            else:
-                self.dicIDs[self.ID] = [
-                    argname, dicChecksum[checksum], filetype
+                if "ID" in dfNames.columns:
+                    argname = dfNames.loc[
+                            dfNames["ID"] == self.ID
+                        ]["Name"].values[0]
+                    print(argname)
+                else:
+                    try:
+                        argname = dfNames.loc[
+                                dfNames["File"] == \
+                                    dicChecksum[checksum][0]
+                            ]["Name"].values[0]
+                    except:
+                        raise SystemError("The NameList you provided causes trouble! Please check pathes / names!")
+                self.compylog.info(
+                    f"File: {argname}, checksum: {checksum}, ID: {self.ID}, "
+                    + f"Add: {booAdd}"
+                )
+                if booAdd:
+                    lsArgnameToDb.append(argname)
+                    self.DbInsertNewAdapter(
+                        argname, checksum, filetype
+                    )
+                #print(dicChecksum[checksum][0])
+                #print(filetype)
+                #print(self.ID)
+                #print(argname)
+                
+                self.dicIDs[filetype][self.ID] = [
+                    argname, dicChecksum[checksum][0], filetype
                 ]
                 lsArgnameComplete.append(argname)
             #sys.exit()
         return lsArgnameToDb, lsArgnameComplete
         
+    
+    
+    
+    
+    def CheckDB(self, bedid, dbpath, checksum, filetype, strReduce, 
+                intSubsample, fileclass):
         
-    def GetNames(self, nameTable, files, filetype):
+        #Initiale logging tool
+        compylog = logging.getLogger("ComPy")
+
+        #Check bam files
+        booAdd = True
+        if filetype == "bam":
+            data = DBManager.ExtractData(
+                "BamInfo", dbpath, ALL = True
+            )
+            sliceddata = data.loc[
+                (data["BedID"] == bedid) 
+                & (data["Reduced"] == strReduce)
+                & (data["Subsamples"] == intSubsample)
+                & (data["Checksum"] == checksum)
+                & (data["FileClass"] == fileclass)
+                & (data["Finished"] == "Yes")
+            ]
+            if len(sliceddata.values) > 0:
+                name = sliceddata["BAM"].values[0]
+                version = sliceddata["Version"]
+                intID = sliceddata["ID"].values[0]
+            # for bamfiles in data:
+            #     if bamfiles[2] == bedid \
+            #         and bamfiles[4] == strReduce \
+            #             and bamfiles[5] == intSubsample \
+            #                 and bamfiles[6] == checksum \
+            #                     and bamfiles[7] == fileclass \
+            #                         and bamfiles[8] == "Yes":
+                compylog.info(
+                    f"The bamfile: '{name}' was already added to "
+                    +f"the database! Reduced: {strReduce}, "
+                    +f"Version: {version}, Subsamples: {intSubsample}, "
+                    +f"FileClass: {fileclass}, ID: {intID}, "
+                    +f"MD5_Sum: {checksum}"
+                )
+                booAdd = False
+                # intID = bamfiles[1]
+                # break
+        #Check vcf files
+        else:
+            data = DBManager.ExtractData(
+                "VCFInfo", dbpath, ALL = True
+            )
+            sliceddata = data.loc[
+                (data["BedID"] == bedid)
+                & (data["Checksum"] == checksum)
+                & (data["FileClass"] == fileclass)
+                & (data["Finished"] == "Yes")
+            ]
+            if len(sliceddata.values) > 0:
+                name = sliceddata["VCF_name"].values[0]
+                intID = sliceddata["ID"].values[0]
+            # for vcffiles in data:
+            #     if vcffiles[2] == bedid \
+            #         and vcffiles[4] == checksum \
+            #             and vcffiles[5] == fileclass \
+            #                 and vcffiles[6] == "Yes":
+                compylog.info(
+                    f"The VCFfile: '{name}' was already added "
+                    + f"to the database! ID: {intID}, BedID: {bedid},"
+                    + f"MD5_Sum: {checksum}, FileClass: {fileclass}"
+                )
+                booAdd = False
+                    # intID = vcffiles[1]
+                    # break
+        
+        #Define new sample ID
+        if booAdd:
+            try:
+                allIds = [x for x in data["ID"].values]
+                allIds.sort()
+                # print(allIds)
+                booIDbetween = False
+                # lsExpected = list(range(1, len(allIds)))
+                # counter = 0
+                for number in range(1, len(allIds)):
+                    if number != allIds[number - 1]:
+                        intID = number
+                        booIDbetween = True
+                        break
+                    #elif number == allIds[counter]:
+                        #counter += 1
+                        
+                if not booIDbetween:
+                    intID = len(allIds) + 1
+            except Exception as e:
+                compylog.warning(
+                    f"No file yet added to database. Error : {e}"
+                )
+                intID = 1
+        return booAdd, intID
+    
+    
+    
+    
+    
+    
+    
+    
+    
+ 
+        
+    def GetNames(self, nameTable, files, filetype, dicCheckSum):
+        #print(files)
         if nameTable:
             dfNameTable = pd.read_csv(nameTable)
-        else:
+            if filetype in dfNameTable["Type"].values:
+                dfNameTable = dfNameTable.loc[dfNameTable["Type"] == filetype]
+                if "ID" in dfNameTable.columns:
+                    if len(dfNameTable["ID"].values) < len(files):
+                        Errormsg = str(
+                            f"The number of file IDs in {nameTable} is "
+                            + "not equal to the number of files provided by "
+                            + "the user!"
+                        )
+                        raise NameError(Errormsg)
+                        self.compylog.error(Errormsg)
+                        sys.exit()
+                elif "File" in dfNameTable.columns:
+                    if len(dfNameTable["File"].values) < len(files):
+                        Errormsg = str(
+                            f"The number of file names in {nameTable} is "
+                            + "not equal to the number of files provided by "
+                            + "the user!"
+                        )
+                        raise NameError(Errormsg)
+                        self.compylog.error(Errormsg)
+                        sys.exit()
+            else:
+                nameTable = False
+        if not nameTable:
+            dfNameTable = self.CreateNewNameTable(files, filetype, dicCheckSum)
+        
+        self.SaveNameTable(dfNameTable)
+        return dfNameTable
+    
+            
+
+        
+    
+    
+    def CreateNewNameTable(self, files, filetype, dicCheckSum):
+        if filetype == "bam":
+            values = DBManager.ExtractData(
+                "BamInfo",self.dbpath, bedid = self.bedid, 
+                strReduce = self.Reduce, subsamples = self.subsample, 
+                FileClass = self.FileClass
+            )
+            intStartCount = len(values)
+        elif filetype == "vcf":
+            values = DBManager.ExtractData(
+                "VCFInfo", self.dbpath, bedid = self.bedid, 
+                FileClass = self.FileClass
+            )
+            intStartCount = len(values)
+        COUNTER = intStartCount
+        lsNames = []
+        for file in files:
+            booFound = False
             if filetype == "bam":
-                values = DBManager.ExtractData(
-                    "BamInfo",self.dbpath, bedid = self.bedid, 
-                    strReduce = self.Reduce, subsamples = self.subsample, 
-                    FileClass = self.FileClass
-                )
-                intStartCount = len(values)
+                for savedfile in values:
+                    if savedfile[6] in dicCheckSum.keys():
+                        if dicCheckSum[savedfile[6]] == file:
+                            name = savedfile[0]
+                            booFound = True
+                            break   
+            
             elif filetype == "vcf":
-                values = DBManager.ExtractData(
-                    "VCFInfo", self.dbpath, bedid = self.bedid, 
-                    FileClass = self.FileClass
-                )
-                intStartCount = len(values)
-            COUNTER = intStartCount
-            lsNames = []
-            for file in files:
-                if filetype == "bam":
-                    lsNames.append([file, f"BAM{COUNTER}"])
-                elif filetype == "vcf":
-                    lsNames.append([file, f"VCF{COUNTER}"])
-                COUNTER += 1
-            dfNameTable = pd.DataFrame(lsNames, columns = ["File", "Name"])
-            pathCSV = glob(self.outputpath + "NameList.csv")
-            try:
-                pathCSV[0]
-                mode = "a"
-            except:
-                mode = "w"
-            with open(
-                    self.outputpath+"NameList.csv", f"{mode}"
-                    ) as csvfile:
-                writedata = csv.writer(csvfile)
+                for savedfile in values:
+                    if savedfile[4] in dicCheckSum.keys():
+                        if dicCheckSum[savedfile[4]] == file:
+                            name = savedfile[0]
+                            booFound = True
+                            break
+            
+            if not booFound:
+               name = f"{filetype}{COUNTER}"
+               COUNTER += 1
+            
+            lsNames.append([file, name])
+            dfNameTable = pd.DataFrame(
+                lsNames, columns = ["File", "Name"]
+            )
+        return dfNameTable
+    
+    
+                
+    def SaveNameTable(self, dfNameTable):
+        pathCSV = glob(self.outputpath + "NameList.csv")
+        try:
+            pathCSV[0]
+            mode = "a"
+        except:
+            mode = "w"
+        with open(
+                self.outputpath+"NameList.csv", f"{mode}"
+                ) as csvfile:
+            writedata = csv.writer(csvfile)
+            if mode == "w":
                 writedata.writerow(dfNameTable.columns)
-                writedata.writerows(dfNameTable.values)
+            # writedata.writerow(dfNameTable.columns)
+            writedata.writerows(dfNameTable.values)
+        
         return dfNameTable
         
+    
+    
+    
         
-    def DbAddAdapter(self, checksum, filetype):
-        booAdd, intID = DBManager.CheckDB(
-            self.bedid, self.dbpath, checksum, filetype, self.Reduce, 
-            self.subsample, self.FileClass
-        )
-        return booAdd, intID
+    # def DbAddAdapter(self, checksum, filetype):
+    #     booAdd, intID = DBManager.CheckDB(
+    #         self.bedid, self.dbpath, checksum, filetype, self.Reduce, 
+    #         self.subsample, self.FileClass
+    #     )
+    #     return booAdd, intID
+
+
+
 
 
     def DbInsertNewAdapter(self, argname, checksum, filetype):

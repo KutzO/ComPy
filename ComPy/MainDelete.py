@@ -1,3 +1,16 @@
+
+
+
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Aug  4 10:42:16 2021
+
+@author: kutzolive
+"""
+
+
 ###Import needed packages
 #External packages
 import logging 
@@ -15,7 +28,7 @@ KWARGS: argFileSum, argDatabase, argBedfile, argSubsample,
 def CompToolDelete(tool, **kwargs):
     
     ###Prepare logging
-    comptoollog = logging.getLogger("ComparisonTool")
+    compylog = logging.getLogger("ComPy")
     
     
     ###Clean up database
@@ -65,8 +78,8 @@ def CompToolDelete(tool, **kwargs):
         """
         #Class defined in script Preparation.py
         classPrep = DataPreparation(
-            "delete", intID = kwargs["argIntID"], 
-            Datatype = kwargs["argDatatype"],  booDB = classDataBase.booDB, 
+            "delete", lsbamid = kwargs["argbamid"], 
+            lsvcfid = kwargs["argvcfid"],  booDB = classDataBase.booDB, 
             DBpath= classDataBase.pathDB, nameTable = kwargs["argNameTable"], 
             dtime= kwargs["dtime"]
         )
@@ -76,6 +89,7 @@ def CompToolDelete(tool, **kwargs):
         """
         #Funktion defined in script DBManager.py
         DBManager.DelData(
-            dbpath = classDataBase.pathDB, vcf = classPrep.vcf, 
-            ID = classPrep.ID
+            dbpath = classDataBase.pathDB, 
+            bamID = classPrep.dicIDs["bam"], 
+            vcfID = classPrep.dicIDs["vcf"]
         )

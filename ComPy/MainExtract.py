@@ -17,7 +17,7 @@ argReduce, dtime, strVersion
 def CompToolExtract(tool, **kwargs):
     
     ###Prepare logging 
-    comptoollog = logging.getLogger("ComparisonTool")
+    compylog = logging.getLogger("ComPy")
     
 
     
@@ -46,28 +46,38 @@ def CompToolExtract(tool, **kwargs):
         classPrep = DataPreparation(
             "extract", booDB = True, DBpath = classDataBase.pathDB, 
             dtime = kwargs["dtime"], version = kwargs["strVersion"], 
-            nameTable = kwargs["argNameList"], intID = kwargs["argIntID"]
+            nameTable = kwargs["argNameList"], 
+            lsbamid = kwargs["argbamid"], lsvcfid = kwargs["argvcfid"]
         )
         
         
         """
         3) Extract needed data from database
         """
-        comptoollog.info("Converting database to .xlsx")
+        compylog.info("Converting database to .xlsx")
         
         #Class is defined in WriteCSV.py
         clSaveData = WriteCSV(
             kwargs["argOutput"], classDataBase.pathDB, kwargs["dtime"], 
-            ID = classPrep.ID
+            bamID = classPrep.dicIDs["bam"], 
+            vcfID = classPrep.dicIDs["vcf"]
         )   
-        clSaveData.WriteData("ReadStatistiks")
-        clSaveData.WriteData("QCmetrics")
-        clSaveData.WriteData("ReadMapping")
-        try:
+        # print(classPrep.dicIDs)
+        if classPrep.dicIDs["bam"]:
+            # print("HI")
+            clSaveData.WriteData("ReadStatistiks")
+            clSaveData.WriteData("QCmetrics")
+            clSaveData.WriteData("ReadMapping")
+        
+        else:
+            compylog.info("No bam data was asked for")
+            
+        if classPrep.dicIDs["vcf"]:
+            # print("HO")
             clSaveData.WriteData("Extracted_Variants")
             clSaveData.WriteData("Sorted_out")
-        except:
-            comptoollog.info("No VCF data was provided")
+        else:
+            compylog.info("No VCF data was provided")
             
     
     
@@ -83,8 +93,8 @@ def CompToolExtract(tool, **kwargs):
         """
     
         """
-        # 1) Prepare database and get .bed id if not provided
-        # """
+        1) Prepare database and get .bed id if not provided
+        """
         classDataBase = DBManager(kwargs["argDatabase"])              #Class defined in script DBManager.py
         
         
@@ -93,7 +103,7 @@ def CompToolExtract(tool, **kwargs):
         2) Recover .bed file targets from database
         """
         intBedID = kwargs["argBedfile"]
-        comptoollog.info(
+        compylog.info(
             "Recover .bed file targets of BedID : {}".format(intBedID)
         )
         clSaveData = WriteCSV(
@@ -125,7 +135,7 @@ def CompToolExtract(tool, **kwargs):
         """
         2) Extract info data from database
         """
-        comptoollog.info("Converting database to .xlsx")
+        compylog.info("Converting database to .xlsx")
         
         #Class is defined in WriteCSV.py
         clSaveData = WriteCSV(
@@ -134,7 +144,7 @@ def CompToolExtract(tool, **kwargs):
         clSaveData.WriteData("BamInfo")
         clSaveData.WriteData("VCFInfo")
         clSaveData.WriteData("BedInfo")
-        comptoollog.info("Saved info files!")
+        compylog.info("Saved info files!")
         
         
         
@@ -145,13 +155,13 @@ def CompToolExtract(tool, **kwargs):
 
     ###If user wants to export database
     if tool == "database":
-        comptoollog.info("The database will be exported!")
+        compylog.info("The database will be exported!")
         #Find database
         classDataBase = DBManager(kwargs["argDatabase"])          #Class defined in script DBManager.py
         
         #Make sure to use right output
         if kwargs["argOutput"][:2] == ".." or kwargs["argOutput"][:2] == "./":
-            strOutput = os.getcwd()+"/"+kwargs["argOutput"]
+            strOutput = os.getcwd() + "/" + kwargs["argOutput"]
             if strOutput[-1] != "/":
                 strOutput = strOutput + "/"
         else:
@@ -163,11 +173,15 @@ def CompToolExtract(tool, **kwargs):
         if not os.path.exists(strOutput):
             os.makedirs(strOutput)
         dtime = kwargs["dtime"]
-        shutil.copyfile(
-            classDataBase.pathDB, strOutput + f"{dtime}_ExportedDatabase.db"
-        )
         pathout = strOutput + f"{dtime}_ExportedDatabase.db"
-        comptoollog.info(
-            f"The database was exported from {classDataBase.pathDB} to {pathout}"
+        print(pathout)
+        print(classDataBase.pathDB)
+        shutil.copyfile(
+            classDataBase.pathDB, pathout
+        )
+        
+        compylog.info(
+            f"The database was exported from {classDataBase.pathDB} to "
+            + f"{pathout}"
         )
         
