@@ -129,7 +129,7 @@ class PlotCompAll():
             strReducedDB = 0
         else:
             strReduced = "Yes"
-            strReducedDB = "No"
+            strReducedDB = 1
         subsamples = dfInfo["Subsamples"].values[0]
         fileclass = dfInfo["FileClass"].values[0]
         lsAllData = DBManager.ExtractData(

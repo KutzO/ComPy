@@ -128,7 +128,7 @@ class PlotTheData():
             self.bamnames = [self.dicIDsBam[x][0] for x in self.dicIDsBam.keys()]
             #print(self.bamnames)
             self.detaildata = DBManager.ExtractData(
-                "ReadStatistiks", self.pathDB, ID= bamcheck
+                "ReadStatistiks", self.pathDB, ID = bamcheck
             )
             self.detaildata["MeanC"] = pd.to_numeric(self.detaildata["MeanC"])
             self.detaildata["Total"] = pd.to_numeric(self.detaildata["Total"])
@@ -136,7 +136,7 @@ class PlotTheData():
             self.detaildata["GC"] = pd.to_numeric(self.detaildata["GC"])
             
             self.phreddata = DBManager.ExtractData(
-                "QCmetrics", self.pathDB, ID= bamcheck
+                "QCmetrics", self.pathDB, ID = bamcheck
             )
             self.phreddata["PHREDmean"] = pd.to_numeric(
                 self.phreddata["PHREDmean"]
@@ -148,7 +148,7 @@ class PlotTheData():
                 self.phreddata["ReadCount"]
             )
             self.mappdata = DBManager.ExtractData(
-            "ReadMapping", self.pathDB, ID= bamcheck
+            "ReadMapping", self.pathDB, ID = bamcheck
             )
             self.mappdata["Total"] = pd.to_numeric(self.mappdata["Total"])
             
@@ -177,7 +177,7 @@ class PlotTheData():
                 "VCFInfo", self.pathDB, ID= vcfcheck    
             )
             self.dfvariants = DBManager.ExtractData(
-                "Extracted_Variants", self.pathDB, ID= vcfcheck
+                "Extracted_Variants", self.pathDB, ID = vcfcheck
             )
             self.dfvariants["Allelefrequency"] = pd.to_numeric(
                 self.dfvariants["Allelefrequency"]
@@ -844,6 +844,14 @@ class PlotTheData():
                 lsAllVars = []
                 lsVCFname = []
                 datainfo = self.vcfinfo.loc[self.vcfinfo["ID"].isin(comb)]
+                if len(datainfo.values) == 0:
+                    self.compylog.error(
+                        "No data was found showing comb ID! Maybe wrong IDs?"
+                    )
+                    raise SystemError(
+                        "The IDs in you VCFplot .csv file are not fitting to "
+                        + "the input data! Please check!"
+                    )
                 fileclass = list(set(datainfo["FileClass"]))
                 bedid = list(set(datainfo["BedID"]))
                 fileclass = datainfo["FileClass"].values[0]
@@ -912,14 +920,14 @@ class PlotTheData():
                     fig, ax = venn5(
                         labels, names = lsVCFname, color = lsColor
                     )
-                
-                ax.set_title(
-                    str(
-                        "Shared variants of .vcf \n "
-                        +f"Group: {fileclass}, "
-                        +f"BED-ID: {bedid}"
+                if len(lsVCFname) > 1:
+                    ax.set_title(
+                        str(
+                            "Shared variants of .vcf \n "
+                            +f"Group: {fileclass}, "
+                            +f"BED-ID: {bedid}"
+                        )
                     )
-                )
                 #cPlt += 1
                 pdfFile.savefig(fig)
                 plt.close("all")
