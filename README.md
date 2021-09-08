@@ -28,7 +28,7 @@ ___
 
 # 1.2 Testing
 
-You may noticed that ComPy comes with two more folders: *additional_data* and *test_data*. Those folders are made to help you learning the program. Before you start the testing please make sure to download the **GRCh37 (hg19) reference genome** from any kind of source. You may download it from here [LINK](www.google.de) or here [LINK](www.google.de). Afterwards, clone the GIT repository to get access to the test data set. 
+You may noticed that ComPy comes with two more folders: *additional_data* and *test_data*. Those folders are made to help you learning the program. Before you start the testing please make sure to download the **GRCh37 (hg19) reference genome** from any kind of source. You may download it from here [LINK](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.13/) or here [FTP-LINK](ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.fna.gz). Afterwards, clone the GIT repository to get access to the test data set. 
 
 	git clone https://g27vmgitlab.med.tu-dresden.de/KUTZOLIVE/compy.git
 	cd compy/
@@ -106,7 +106,7 @@ Here, ComPy will remove every entry showing the ID defined in the provided .csv 
 
 # 6. Merge databases
 
-Maybe you want to compare your data with those of your colleagues or them want to use your data? For this case (and ofc other) ComPy provides a function to merge databases. To do so, you need one of two prerequisites. Either the second database itself (you may export it with the export function) or all of the possible .xlsx files. If you provide the .xlsx files you have to make sure nothing was changed here, since ComPy needs them in the way it exports them. You need in total 8 different .xlsx files (*Bedinfo.xlsx, Bedfiles.xlsx, BamInfo.xlsx, QCmetrics.xlsx, ReadMapping.xlsx, ReadStatistiks.xlsx, VCFInfo.xlsx, Extracted_Variants.xlsx*) with exactly the naming they got by ComPy. **Please be aware of the fact, that *Bedinfo.xlsx* and *Bedfiles.xlsx* have to be separately provided from the others!**
+Maybe you want to compare your data with those of your colleagues or them want to use your data? For this case (and ofc other) ComPy provides a function to merge databases. To do so, you need one of two prerequisites. Either the second database itself (you may export it with the export function) or all of the possible .xlsx files. If you provide the .xlsx files you have to make sure nothing was changed here, since ComPy needs them in the way it exports them. You need in total 7 database .xlsx files (*Bedinfo.xlsx, BamInfo.xlsx, QCmetrics.xlsx, ReadMapping.xlsx, ReadStatistiks.xlsx, VCFInfo.xlsx, Extracted_Variants.xlsx*) with exactly the naming they got by ComPy. Furthermore, you need all associated .bed files as *Bedfiles_Name.xlsx*. Those .bed file .xslx have to be provided to the function separately.
 
 	ComPy merge -x PATHTOBAMVCFXLSX -b PATHTOBEDXLSX
 
