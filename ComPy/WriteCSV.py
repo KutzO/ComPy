@@ -117,6 +117,8 @@ class WriteCSV():
         targets = DBManager.ExtractData(
             "Bedfiles", self.pathDB, bedid = self.bedid
         )
+        #print(targets)
+        #sys.exit()
         with open(
                 self.out + f"RecoveredBedID_{self.bedid}.bed","w"
                   ) as bedfile:
