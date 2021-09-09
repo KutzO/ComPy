@@ -198,7 +198,7 @@ class PlotCompAll():
         if intnumsamples < 5:
             
             strMsg = str("To few samples to do comparison. Please add more! "
-                         + "At least 10 samples are needed, at now only "
+                         + "At least 5 samples are needed, at now only "
                          + f"{intnumsamples} samples are stored in database.."
                      )
             print(strMsg)
