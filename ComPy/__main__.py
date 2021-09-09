@@ -614,7 +614,7 @@ def main():
         "Required! Either another db or files (.xlsx and .bed)"
     )
     group_merge_req.add_argument(
-        "-d", "--database", nargs = "*", default = False,
+        "-d", "--database", type = str, default = False,
         help = ("Path to a database that should be included")
     )
     group_merge_req.add_argument(
