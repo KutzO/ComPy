@@ -16,7 +16,8 @@ from .DbManager import DBManager
 from .Preparation import DataPreparation 
 
 class CompToolMerge():
-    def __init__(self, argnewdb = False, argolddb = False, argxlsx = False, argbed = False):
+    def __init__(self, argnewdb = False, argolddb = False, argxlsx = False, 
+                 argbed = False):
         self.newdb = argnewdb
         self.xlsx = argxlsx
         self.bed = argbed
@@ -40,18 +41,18 @@ class CompToolMerge():
             self.GetData(lsPathExcel, lsPathBed)
         
         dicBedID, self.dfBF = self.CheckBed()
-        dicBamID = self.CheckFiles("BamInfo", self.dfBamI, "ID")
-        dicVcfID = self.CheckFiles("VCFInfo", self.dfVI, "ID")
+        dicBamID = self.CheckFileID("BamInfo", self.dfBamI, "ID")
+        dicVcfID = self.CheckFileID("VCFInfo", self.dfVI, "ID")
         
         self.AdjustDf(dicBedID, dicBamID, dicVcfID)
-        self.UpdataDB(self.dfBedI.values, "BedInfo")
-        self.UpdataDB(self.dfBF.values, "Bedfiles")
-        self.UpdataDB(self.dfBamI.values, "BamInfo")
-        self.UpdataDB(self.dfRM.values, "ReadMapping")
-        self.UpdataDB(self.dfRS.values, "ReadStatistiks")
-        self.UpdataDB(self.dfQC.values, "QCmetrics")
-        self.UpdataDB(self.dfVI.values, "VCFInfo")
-        self.UpdataDB(self.dfE.values, "Extracted_Variants")
+        self.UpdateDB(self.dfBedI.values, "BedInfo")
+        self.UpdateDB(self.dfBF.values, "Bedfiles")
+        self.UpdateDB(self.dfBamI.values, "BamInfo")
+        self.UpdateDB(self.dfRM.values, "ReadMapping")
+        self.UpdateDB(self.dfRS.values, "ReadStatistiks")
+        self.UpdateDB(self.dfQC.values, "QCmetrics")
+        self.UpdateDB(self.dfVI.values, "VCFInfo")
+        self.UpdateDB(self.dfE.values, "Extracted_Variants")
         # self.UpdataDB(self.dfSO, "Sorted_out")
       
             
@@ -93,14 +94,30 @@ class CompToolMerge():
 
     def GetData(self, datafiles = False, bedfiles = False):
         if self.newdb:
-            self.dfBedI = DBManager.ExtractData("BedInfo", self.olddb, ALL = True)
-            self.dfBF = DBManager.ExtractData("Bedfiles", self.olddb, ALL = True)
-            self.dfBamI = DBManager.ExtractData("BamInfo", self.olddb, ALL = True)
-            self.dfRM = DBManager.ExtractData("ReadMapping", self.olddb, ALL = True)
-            self.dfRS = DBManager.ExtractData("ReadStatistiks", self.olddb, ALL = True)
-            self.dfQC = DBManager.ExtractData("QCmetrics", self.olddb, ALL = True)
-            self.dfVI = DBManager.ExtractData("VCFInfo", self.olddb, ALL = True)
-            self.dfE = DBManager.ExtractData("Extracted_Variants", self.olddb, ALL = True)
+            self.dfBedI = DBManager.ExtractData(
+                "BedInfo", self.newdb, ALL = True
+            )
+            self.dfBF = DBManager.ExtractData(
+                "Bedfiles", self.newdb, ALL = True
+            )
+            self.dfBamI = DBManager.ExtractData(
+                "BamInfo", self.newdb, ALL = True
+            )
+            self.dfRM = DBManager.ExtractData(
+                "ReadMapping", self.newdb, ALL = True
+            )
+            self.dfRS = DBManager.ExtractData(
+                "ReadStatistiks", self.newdb, ALL = True
+            )
+            self.dfQC = DBManager.ExtractData(
+                "QCmetrics", self.newdb, ALL = True
+            )
+            self.dfVI = DBManager.ExtractData(
+                "VCFInfo", self.newdb, ALL = True
+            )
+            self.dfE = DBManager.ExtractData(
+                "Extracted_Variants", self.newdb, ALL = True
+            )
             # self.dfSO = DBManager.ExtractData("Sorted_out", self.olddb, ALL = True)
         
         else:
@@ -110,7 +127,9 @@ class CompToolMerge():
             self.dfBF = pd.read_excel(bedfiles[0])
             if len(bedfiles) > 1:
                 for files in bedfiles[1:]:
-                    self.dfBF = self.dfBF.append(pd.read_excel(files), ignore_index = True, sort = False)
+                    self.dfBF = self.dfBF.append(
+                        pd.read_excel(files), ignore_index = True, sort = False
+                    )
             
             pathBamI = [x for x in datafiles if "BamInfo" in x][0]
             self.dfBamI = pd.read_excel(pathBamI)
@@ -153,14 +172,17 @@ class CompToolMerge():
                 # print(booAdd)
                 # sys.exit()
                 if booAdd:
-                    dfAdd = dfAdd.append(dfNewSlice, ignore_index = True, sort = False)
+                    dfAdd = dfAdd.append(
+                        dfNewSlice, ignore_index = True, sort = False
+                    )
         if len(dfAdd.values) > 0:
             lsBedIDNewAdd = list(set(dfAdd["BedID"]))
             for intID in lsBedIDNewAdd:
                 booCheck = False
                 if intID in lsBedIDOld:
                     for newid in range(1, len(lsBedIDOld) + 1):
-                        if newid not in lsBedIDOld and newid not in dicBedID.keys():
+                        if newid not in lsBedIDOld \
+                         and newid not in dicBedID.keys():
                             dicBedID[intID] = newid
                             booCheck = True
                             break
@@ -196,10 +218,11 @@ class CompToolMerge():
         return False 
         
     
+            
     
-    
-    def CheckFiles(self, table, newDf, col):
+    def CheckFileID(self, table, newDf, col):
         dfOld = DBManager.ExtractData(table, self.olddb, ALL = True)
+        newDf = self.SortOutPresentSamples(table, newDf, dfOld)
         dicID = {}
         lsNewID = list(set(newDf[col]))
         lsOldID = list(set(dfOld[col]))
@@ -225,30 +248,115 @@ class CompToolMerge():
     
     
     
+    
+    
+    
+    def SortOutPresentSamples(self, table, dfNew, dfOld):
+        #lsIDNew = list(dfNew["ID"])
+        lsNewMd5 = list(dfNew["Checksum"])
+        lsOldMd5 = list(dfOld["Checksum"])
+        lsNew = lsNewMd5[:]
+        lsOld = lsOldMd5[:]
+        # print(dfNew)
+        # print(dfOld)
+        if table == "BamInfo":
+            lsNewRed = list(dfNew["Reduced"])
+            lsOldRed = list(dfOld["Reduced"])
+            lsNewSub = list(dfNew["Subsamples"])
+            lsOldSub = list(dfOld["Subsamples"])
+            lsNew = zip(lsNewMd5, lsNewRed, lsNewSub)
+            lsOld = zip(lsOldMd5, lsOldRed, lsOldSub)
+        
+        counter = 0
+        # print(table)
+        # print(lsNew)
+        # print(lsOld)
+        for i in lsNew:
+            if i in lsOld:
+                dfNew = dfNew.drop([counter])
+                if table == "BamInfo":
+                    self.dfBamI = self.dfBamI.drop([counter])
+                elif table == "VCFInfo":
+                    self.dfVI = self.dfVI.drop([counter])
+            counter += 1
+        self.DeleteDuplicates(table, dfNew)
+        return dfNew
+        
+        
+    def DeleteDuplicates(self, table, dfNew):
+        # print(dfNew)
+        lsReducedIds = list(dfNew["ID"])
+        if table == "BamInfo":
+            COUNTER = 0
+            for intID in self.dfRM["ID"]:
+                if intID not in lsReducedIds:
+                    self.dfRM = self.dfRM.drop([COUNTER])
+                COUNTER += 1
+            COUNTER = 0
+            for intID in self.dfQC["ID"]:
+                if intID not in lsReducedIds:
+                    self.dfQC = self.dfQC.drop([COUNTER])
+                COUNTER += 1
+            COUNTER = 0
+            for intID in self.dfRS["ID"]:
+                if intID not in lsReducedIds:
+                    self.dfRS = self.dfRS.drop([COUNTER])
+                COUNTER += 1
+        elif table == "VCFInfo":
+            COUNTER = 0
+            for intID in self.dfE["ID"]:
+                if intID not in lsReducedIds:
+                    self.dfE = self.dfE.drop([COUNTER])
+                COUNTER += 1
+        
+        
+        
+        
+        
     def AdjustDf(self, dicBedID, dicBamID, dicVcfID):
         for oldID in dicBedID.keys():
             col = "BedID"
-            self.dfBedI[col] = self.dfBedI[col].where(self.dfBedI[col] != oldID, dicBedID[oldID])
+            self.dfBedI[col] = self.dfBedI[col].where(
+                self.dfBedI[col] != oldID, dicBedID[oldID]
+            )
             # sys.exit()
-            self.dfBF[col] = self.dfBF[col].where(self.dfBF[col] != oldID, dicBedID[oldID])
-            self.dfBamI[col] = self.dfBamI[col].where(self.dfBamI[col] != oldID, dicBedID[oldID])
-            self.dfVI[col] = self.dfVI[col].where(self.dfVI[col] != oldID, dicBedID[oldID])
+            self.dfBF[col] = self.dfBF[col].where(
+                self.dfBF[col] != oldID, dicBedID[oldID]
+            )
+            self.dfBamI[col] = self.dfBamI[col].where(
+                self.dfBamI[col] != oldID, dicBedID[oldID]
+            )
+            self.dfVI[col] = self.dfVI[col].where(
+                self.dfVI[col] != oldID, dicBedID[oldID]
+            )
         for oldID in dicBamID.keys():
             col = "ID"
-            self.dfBamI[col] = self.dfBamI[col].where(self.dfBamI[col] != oldID, dicBamID[oldID])
-            self.dfRM[col] = self.dfRM[col].where(self.dfRM[col] != oldID, dicBamID[oldID])
-            self.dfRS[col] = self.dfRS[col].where(self.dfRS[col] != oldID, dicBamID[oldID])
-            self.dfQC[col] = self.dfQC[col].where(self.dfQC[col] != oldID, dicBamID[oldID])
+            self.dfBamI[col] = self.dfBamI[col].where(
+                self.dfBamI[col] != oldID, dicBamID[oldID]
+            )
+            self.dfRM[col] = self.dfRM[col].where(
+                self.dfRM[col] != oldID, dicBamID[oldID]
+            )
+            self.dfRS[col] = self.dfRS[col].where(
+                self.dfRS[col] != oldID, dicBamID[oldID]
+            )
+            self.dfQC[col] = self.dfQC[col].where(
+                self.dfQC[col] != oldID, dicBamID[oldID]
+            )
         for oldID in dicVcfID.keys():
             col = "ID"
-            self.dfVI[col] = self.dfVI[col].where(self.dfVI[col] != oldID, dicVcfID[oldID])
-            self.dfE[col] = self.dfE[col].where(self.dfE[col] != oldID, dicVcfID[oldID])
+            self.dfVI[col] = self.dfVI[col].where(
+                self.dfVI[col] != oldID, dicVcfID[oldID]
+            )
+            self.dfE[col] = self.dfE[col].where(
+                self.dfE[col] != oldID, dicVcfID[oldID]
+            )
             # self.dfSO[col] = self.dfSO.where(self.dfSO[col] != oldID, dicVcfID[oldID])
     
     
     
  
-    def UpdataDB(self, data, table):
+    def UpdateDB(self, data, table):
         if len(data) == 0:
             pass
         else:

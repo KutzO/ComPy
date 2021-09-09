@@ -95,17 +95,6 @@ class DataPreparation:
                 lsIDs = lsIDs + lsvcfid
                 lsType = lsType + ["vcf" for x in lsvcfid]
                 lsNames = lsNames + [f"Vcf_{x}" for x in lsvcfid]
-            # lsIDs = lsbamid + lsvcfid
-            # lsType = []
-            # if lsbamid:
-                
-            # if lsvcfid:
-                
-            # lsType = ["bam" for x in lsbamid] + ["vcf" for x in lsvcfid]
-            
-            
-            # lsNameVcf = [f"Vcf_{x}" for x in lsvcfid]
-            # lsNames = lsNameBam + lsNameVcf 
             dfData["ID"] = lsIDs
             dfData["Type"] = lsType
             dfData["Name"] = lsNames
@@ -380,6 +369,7 @@ class DataPreparation:
     ###Extract targetdata from BED file: Chromosome, Start, End
     def SliceBedFile(self, bed):
         bedimport = pd.read_csv(bed, sep="\t", header=None, low_memory=False)
+        
         start = 0
         #Check-up if a header is present --> if yes: all info extraction starts from position 1 (Position 1 == row 1)
         if bedimport.values[0][2] != int(bedimport.values[0][2]):
@@ -560,9 +550,10 @@ class DataPreparation:
                     argname = dfNames.loc[
                             dfNames["ID"] == self.ID
                         ]["Name"].values[0]
-                    print(argname)
+                    #print(argname)
                 else:
                     try:
+                        
                         argname = dfNames.loc[
                                 dfNames["File"] == \
                                     dicChecksum[checksum][0]
@@ -703,6 +694,11 @@ class DataPreparation:
         #print(files)
         if nameTable:
             dfNameTable = pd.read_csv(nameTable)
+            # print(dfNameTable)
+            if len(dfNameTable.columns) < 3:
+                #print("Failed")
+                dfNameTable = pd.read_csv(nameTable, sep=";")
+                
             if filetype in dfNameTable["Type"].values:
                 dfNameTable = dfNameTable.loc[dfNameTable["Type"] == filetype]
                 if "ID" in dfNameTable.columns:
