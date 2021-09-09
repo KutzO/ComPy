@@ -174,8 +174,8 @@ def CompToolExtract(tool, **kwargs):
             os.makedirs(strOutput)
         dtime = kwargs["dtime"]
         pathout = strOutput + f"{dtime}_ExportedDatabase.db"
-        print(pathout)
-        print(classDataBase.pathDB)
+        # print(pathout)
+        # print(classDataBase.pathDB)
         shutil.copyfile(
             classDataBase.pathDB, pathout
         )
