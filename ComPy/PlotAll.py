@@ -18,162 +18,214 @@ import os
 Called by __main__.py if there are more then 3 other samples showing same .bed id.
 """
 class PlotCompAll():
-    def __init__(self, pathDB, dtime, output, threads, dicIDs, styleyaml):
+    def __init__(self, pathDB, dtime, output, threads, dicIDs, styleyaml, 
+                 fileclasses = False):
         
-        ###Define global variables
-        self.pathDB = pathDB                                                   #Path to current database
-        self.dicID = {}
-        for k in dicIDs["bam"].keys():
-            self.dicID[k] = dicIDs["bam"][k]
-        self.newbam = [self.dicID[x][0] for x in self.dicID.keys()]            #New .bam sample names
+        ###Define global plot params
         self.styleyaml = styleyaml
         plt.style.use(self.styleyaml["plotstyle"])
-        #sns.set(style = self.styleyaml["plotstyle"])
-        #self.bedid  = bedid                                                    #The .bed identifier of current samples
-        #self.subsamples = subsamples                                           #Number of reads collected for QC
-        #self.dicID = dicIDs
-        #self.reduced = reduced                                                 #True if .bed file was reduced 
-        self.out = output
-        #if self.reduced:
-        #    self.reduced = "Yes"
-        #    self.reducedDB = 1
-        #else:
-        #    self.reduced = "No"
-        #    self.reducedDB = 0
-        #if FileClass:
-        #    self.FileClass = FileClass
-        #else:
-        #    self.FileClass = "Default"
+        self.headersize = self.styleyaml["database"]["headersize"]
+        plt.rcParams[
+            "ytick.labelsize"] = self.styleyaml["database"]["xlabel"]
+        plt.rcParams[
+            "xtick.labelsize"] = self.styleyaml["database"]["ylabel"]
+        plt.rcParams[
+            "axes.labelsize"] = self.styleyaml["database"]["axlabel"]
+        plt.rcParams[
+            "axes.titlesize"] = self.styleyaml["database"]["title"]
+        plt.rcParams[
+            "legend.fontsize"] = self.styleyaml["database"]["font"]
+        plt.rcParams[
+            "legend.title_fontsize"] = self.styleyaml["database"]["titlefont"]
             
-        ###Initialize logging
+            
+        ###Define global variables
+        self.pathDB = pathDB                                                   #Path to current database
+        self.out = output
         self.compylog = logging.getLogger("ComPy")
-        
-        ###Check if comparison with database is possible (more then 3 other samples with same .bed identifier)
+        dicID = {}
+        self.dicNames = {}
+        for k in dicIDs["bam"].keys():
+            dicID[k] = dicIDs["bam"][k]
+            self.dicNames[k] = dicIDs["bam"][k]
+            
+        ###Check if comparison with database is possible (more then 5 samples in database)
         self.compylog.info("Get Status if comparison is possible")
+        self.dicID = self.CreateDetailedDict(dicID, fileclasses)
         
         
-        
-       
+        ###Start comparison
         pool = multiprocessing.Pool(processes=threads)
         lsJobs = []
-        ###Start comparison of each new sample with database!
-        for intID in self.dicID.keys():
-            lsJobs.append(
-                pool.apply_async(
-                    self.DoPlotting, 
-                    args=(
-                        intID, dtime,
+        print(self.dicID)
+        print(self.dicNames)
+        if len(self.dicID.keys()) > 0:
+            for count in self.dicID.keys():
+                lsJobs.append(
+                    pool.apply_async(
+                        self.DoPlotting, 
+                        args=(
+                            count, dtime,
+                        )
                     )
                 )
-            )
 
-        for job in tqdm(lsJobs):
-            job.get()
-        pool.close()
-        self.compylog.info("Finished big comparison of all data")
+            for job in tqdm(lsJobs):
+                job.get()
+            pool.close()
+            self.compylog.info("Finished big comparison of all data")
         
         
 
+    def CreateDetailedDict(self, dicID, fileclasses):
+        dfAll = DBManager.ExtractData(
+            "BamInfo", self.pathDB, ALL = True
+        )
+        dfAll = dfAll.loc[dfAll["ID"].isin(dicID.keys())]
+        #print(dfAll)
+        dicReturn = {}
+        if type(fileclasses) != bool:
+            dfAll = dfAll.loc[
+                dfAll["FileClass"].isin(fileclasses)
+            ]
+            if len(set(dfAll["BedID"].values)) > 1:
+                strMsg = str(
+                     "You try to compare files with different .bed IDs!"
+                     + "This is not supported, since different target numbers "
+                     + "will result in not comparable results!"
+                )
+                print(strMsg)
+                self.compylog.error(strMsg)
+            elif len(set(dfAll["Reduced"])) > 1 \
+             or len(set(dfAll["Subsamples"])) > 1:
+                strMsg = str(
+                     "A comparison between data extracted with "
+                     + "different parameters is not yet supportet!"
+                )
+                print(strMsg)
+                self.compylog.error(strMsg)
+            else:
+                dicReturn[0] = [
+                    fileclasses, list(dfAll["ID"].values)
+                ]
+        else:
+            counter = 0
+            for group in set(dfAll["FileClass"]):
+                dfIDs = dfAll.loc[dfAll["FileClass"] == group]
+                lsIDs = list(dfIDs["ID"].values)
+                dicReturn[counter] = [[group], lsIDs]
+                counter += 1
+        return dicReturn
 
-
+            
+            
         
         
-    def DoPlotting(self, intID, dtime):
-        
-        dfInfo, dfInfoBam, dfInfoVcf, dfInfoBed = self.GetDataInfo(intID)
-        dicOldBam = self.CheckSamples(intID, dfInfo) 
-        AllStats, AllQC, AllMapp, booComp  = self.GetData(dicOldBam)
-        self.compylog.info("Extracted all dataframes from database!")
-        if booComp:
-            self.compylog.info(
-            f"Start plotting big comparison of sample {self.dicID[intID][0]}"
-            )
-            self.CreatePlotGrid(
-                self.dicID[intID][0], len(set(list(AllStats["Chrom"].values)))
-            )
-            self.compylog.info("Created main frame!")
-            self.SubPlotCompare(AllStats, intID, dicOldBam, AllMapp)
-            self.compylog.info("Created subplots!")
-            self.SubPlotBase(
-                intID, AllStats, AllQC, dicOldBam, dfInfoBam, dfInfoVcf, 
-                dfInfoBed, AllMapp, dfInfo
-            )
-            self.SavePlot(intID, dtime)
-            self.compylog.info("Saved plots!")
+    def DoPlotting(self, count, dtime):
+        for intID in self.dicID[count][1]:
+            group = self.dicID[count][0]
+            dfInfoSample, dfInfoBam, dfInfoVcf, dfInfoBed = self.GetDataInfo(intID)
+            dicOldBam = self.CheckSamples(intID, dfInfoSample, group) 
+            if dicOldBam:
+                AllStats, AllQC, AllMapp  = self.GetData(dicOldBam, count)
+                self.compylog.info("Extracted all dataframes from database!")
+                #if booComp:
+                self.compylog.info(
+                    f"Start plotting big comparison of sample {self.dicNames[intID][0]}"
+                )
+                self.CreatePlotGrid(
+                    self.dicNames[intID][0], len(set(list(AllStats["Chrom"].values)))
+                )
+                self.compylog.info("Created main frame!")
+                self.SubPlotCompare(AllStats, intID, dicOldBam, AllMapp)
+                self.compylog.info("Created subplots!")
+                self.SubPlotBase(
+                    intID, AllStats, AllQC, dicOldBam, dfInfoBam, dfInfoVcf, 
+                    dfInfoBed, AllMapp, dfInfoSample, group
+                )
+                self.SavePlot(intID, dtime)
+                self.compylog.info("Saved plots!")
+            else:
+                pass
                 
 
 
     def GetDataInfo(self, intID):
-        dfAllInfo = DBManager.ExtractData(
+        dfInfoSample = DBManager.ExtractData(
             "BamInfo", self.pathDB, ID = intID
         )
-        dfInfoBam = DBManager.ExtractData(
+        dfInfoB = DBManager.ExtractData(
             "BamInfo", self.pathDB, ALL = True
         )
-        dfInfoVcf = DBManager.ExtractData(
+        dfInfoV = DBManager.ExtractData(
             "VCFInfo", self.pathDB, ALL = True
         )
         dfInfoBed = DBManager.ExtractData(
             "BedInfo", self.pathDB, ALL = True
         )
-        return dfAllInfo, dfInfoBam, dfInfoVcf, dfInfoBed
+        return dfInfoSample, dfInfoB, dfInfoV, dfInfoBed
     
     
     
     
-    def CheckSamples(self, intID, dfInfo):
+    def CheckSamples(self, intID, dfInfoSample, group):
         #Extract all .bam samples from database with current .bed identifier
-        bedid = dfInfo["BedID"].values[0]
-        if dfInfo["Reduced"].values[0] == 0:
+        bedid = dfInfoSample["BedID"].values[0]
+        if dfInfoSample["Reduced"].values[0] == 0:
             strReduced = "No"
             strReducedDB = 0
         else:
             strReduced = "Yes"
             strReducedDB = 1
-        subsamples = dfInfo["Subsamples"].values[0]
-        fileclass = dfInfo["FileClass"].values[0]
+        subsamples = dfInfoSample["Subsamples"].values[0]
+        #fileclass = group
         lsAllData = DBManager.ExtractData(
             "BamInfo", self.pathDB, bedid = bedid, 
             strReduce = strReducedDB, subsamples = subsamples,
-            FileClass = fileclass
-        )        
-        #Filter samples if new or in database before
-        dicFilteredData = {}
-        
-        for data in lsAllData:
-            booPop = False
-            if data[1] == intID:
-                booPop = True
-            if not booPop:
+            FileClass = group
+        )    
+        # print(lsAllData)
+        if len(lsAllData) < 5:
+            strMsg = str(
+                 f"To few samples to do comparison for group {group}. Please add more! "
+                 + "At least 5 samples are needed, at now only "
+                 + f"{len(lsAllData)} samples are stored in database.."
+            )
+            print(strMsg)
+            self.compylog.error(strMsg)
+            return False
+        else:
+            dicFilteredData = {}
+            for data in lsAllData:
+                # booPop = False
+                # if data[1] == intID:
+                    # booPop = True
+                # if not booPop:
                 dicFilteredData[data[1]] = data[0]
-        #Check if there are more then 3 samples left after filtering
-        # if len(dicFilteredData.keys()) >= 3:
-        #     booCompare = True
-        # else:
-        #     booCompare = False
+                self.compylog.info(
+                    f"Data from database: {dicFilteredData.values()}"
+                )
+                self.compylog.info(
+                    f"Side infos: bedid = {bedid}; "
+                    +f"subsamples = {subsamples}; "
+                    +f"reduced= {strReduced}; "
+                    +f"FileClass = {group}"
+                )
+                return dicFilteredData
 
-        # self.compylog.info(
-        #     f"The big comparison is {booCompare} because there are "
-        #     +f"{len(dicFilteredData.keys())} data in database to compare"
-        # )
-        self.compylog.info(
-            f"Data from database: {dicFilteredData.values()}"
-        )
+        
         # self.compylog.info("New data: {dicFilteredData.values()}")
-        self.compylog.info(
-            f"Side infos: bedid = {bedid}; "
-            +f"subsamples = {subsamples}; "
-            +f"reduced= {strReduced}; "
-            +f"FileClass = {fileclass}"
-        )
+        
         #print(dicFilteredData)
-        return dicFilteredData
+        
 
-                 
-    def GetData(self, dicOldBam):
+    
+
+    
+    def GetData(self, dicOldBam, count):
         
         #Collect needed information from database
-        lsIDs = list(dicOldBam.keys())+list(self.dicID.keys())
+        lsIDs = list(dicOldBam.keys()) + self.dicID[count][1]
         dfStats = DBManager.ExtractData(
             "ReadStatistiks", self.pathDB, ID = lsIDs
         )
@@ -194,19 +246,19 @@ class PlotCompAll():
         )
         dfMapp["Total"] = pd.to_numeric(dfMapp["Total"])
         
-        intnumsamples = len(set(dfStats["ID"].values))
-        if intnumsamples < 5:
+        # intnumsamples = len(set(dfStats["ID"].values))
+        # if intnumsamples < 5:
             
-            strMsg = str("To few samples to do comparison. Please add more! "
-                         + "At least 5 samples are needed, at now only "
-                         + f"{intnumsamples} samples are stored in database.."
-                     )
-            print(strMsg)
-            self.compylog.error(strMsg)
-            booComp = False
-        else:
-            booComp = True
-        return dfStats, dfQC, dfMapp, booComp
+            # strMsg = str("To few samples to do comparison. Please add more! "
+                         # + "At least 5 samples are needed, at now only "
+                         # + f"{intnumsamples} samples are stored in database.."
+                     # )
+            # print(strMsg)
+            # self.compylog.error(strMsg)
+            # booComp = False
+        # else:
+            # booComp = True
+        return dfStats, dfQC, dfMapp
     
     
     
@@ -214,7 +266,7 @@ class PlotCompAll():
     def CreatePlotGrid(self, bamfile, NumChrom):
         imgFigu = plt.figure(figsize = (18, 21))
         imgFigu.suptitle(
-            f"Comparison of sample {bamfile} with database \n", size = 20
+            f"Comparison of sample {bamfile} with database \n", size = self.headersize
         )
         self.grid = GridSpec(6, 6, figure = imgFigu)
         self.ax1 = imgFigu.add_subplot(self.grid[0, 0])
@@ -235,7 +287,7 @@ class PlotCompAll():
     
     
     def SubPlotBase(self, intID, AllStats, AllQC, dicOldBam, dfInfoBam, 
-                    dfInfoVcf, dfInfoBed, AllMapp, dfInfo):
+                    dfInfoVcf, dfInfoBed, AllMapp, dfInfo, group):
         ###Collect sample metadata
         bedid = dfInfo["BedID"].values[0]
         if dfInfo["Reduced"].values[0] == 0:
@@ -336,7 +388,7 @@ class PlotCompAll():
             ],
             [
                 "Size database", sizeDb, 
-                "-", "-"
+                "Used groups", group
             ],
         ]
         table_a = self.ax7.table(
@@ -529,27 +581,48 @@ class PlotCompAll():
         dfMapStatsTarget = dfMapp.loc[dfMapp["ID"] == intID]
         dfMapStatsAll = dfMapp.loc[dfMapp["ID"].isin(dicOldBam.keys())]
         
-        #Calculate target size in MB
-        dfTargetMB = abs(dfBamStats["Start"] - dfBamStats["End"]) / 1_000_000
+        # Calculate target size in MB
+        # dfTargetMB = abs(dfBamStats["Start"] - dfBamStats["End"]) / 1_000_000
+        
+        #dfWholeData = pd.DataFrame()
         
         #Calculate mean coverage
         intMeanCov = dfBamStats["MeanC"].mean()
+        lsMeanRest = []
+        for intID in dfAllStats["ID"]:
+            flMean = dfAllStats.loc[dfAllStats["ID"] == intID]["MeanC"].mean()
+            lsMeanRest.append(flMean)
+        
         
         #Calculate mean coverage of GC rich regions
         intMeanCovGC = dfBamStats.loc[dfBamStats["GC"] > 0.5]["MeanC"].mean()
+        lsGcRest = []
+        for intID in dfAllStats["ID"]:
+            flGcMean = dfAllStats.loc[
+                        (dfAllStats["ID"] == intID)
+                        & (dfAllStats["GC"] > 0.5)
+                    ]["MeanC"].mean()
+            lsGcRest.append(flGcMean)
         
         #Calculate mean coverage of AT rich regions
         intMeanCovAT = dfBamStats.loc[dfBamStats["GC"] < 0.5]["MeanC"].mean()
-    
+        lsAtRest = []
+        for intID in dfAllStats["ID"]:
+            flAtMean = dfAllStats.loc[
+                        (dfAllStats["ID"] == intID)
+                        & (dfAllStats["GC"] < 0.5)
+                    ]["MeanC"].mean()
+            lsAtRest.append(flAtMean)
+            
         #Calculate difference of coverage between GC and AT rich regions
         intDifCov = (intMeanCovGC - intMeanCovAT) / intMeanCov
     
         #Variance of coverage between all targets
         intVarCov = dfBamStats["MeanC"].var()
         lsVarOld = []
-        for oldID in dicOldBam.keys():
+        for intID in dfAllStats["ID"]:
             lsVarOld.append(
-                dfAllStats.loc[dfAllStats["ID"] == oldID]["MeanC"].var()
+                dfAllStats.loc[dfAllStats["ID"] == intID]["MeanC"].var()
             )
     
         #Percentage of reads mapped to ROI
@@ -557,13 +630,13 @@ class PlotCompAll():
             dfBamStats["Mapped"].sum() / dfMapStatsTarget["Total"].sum()
             )*100
         lsRoiOld = []
-        for oldID in dicOldBam.keys():
+        for intID in dfAllStats["ID"]:
             lsRoiOld.append(
-                (dfStats.loc[
-                    dfStats["ID"] == oldID
+                (dfAllStats.loc[
+                    dfAllStats["ID"] == intID
                         ]["Mapped"].sum() \
                     /dfMapStatsAll.loc[
-                        dfMapStatsAll["ID"] == oldID
+                        dfMapStatsAll["ID"] == intID
                         ]["Total"].sum()
                 )*100
             )
@@ -578,8 +651,10 @@ class PlotCompAll():
         ###Plot the data
         
         #Mean coverage
+        dfMeanDatabase = pd.DataFrame()
+        dfMeanDatabase["Mean"] = lsMeanRest
         sns.boxplot(
-            y = dfAllStats["MeanC"], ax = self.ax1, orient = "vertical", 
+            y = dfMeanDatabase["Mean"], ax = self.ax1, orient = "vertical", 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
         self.ax1.axes.get_xaxis().set_visible(False)    #Keine x-Axe
@@ -593,8 +668,10 @@ class PlotCompAll():
         self.ax1.grid(False)
         
         #Mean coverage of GC rich regions
+        dfGcMean = pd.DataFrame()
+        dfGcMean["Mean"] = lsGcRest
         sns.boxplot(
-            y = dfAllStats.loc[dfAllStats["GC"] > 0.5]["MeanC"], 
+            y =  dfGcMean["Mean"], 
             ax = self.ax2, orient = "vertical", 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
@@ -612,8 +689,10 @@ class PlotCompAll():
 
             
         #Mean coverage of AT rich regions
+        dfAtMean = pd.DataFrame()
+        dfAtMean["Mean"] = lsAtRest
         sns.boxplot(
-            y = dfAllStats.loc[dfAllStats["GC"] < 0.5]["MeanC"], 
+            y = dfAtMean["Mean"], 
             ax = self.ax3, orient = "vertical", 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
@@ -712,11 +791,11 @@ class PlotCompAll():
             
         #Save plot
         with PdfPages(
-                self.out + f"BigCompare/{dtime}_{self.dicID[intID][0]}.pdf"
+                self.out + f"BigCompare/{dtime}_{self.dicNames[intID][0]}.pdf"
                 ) as pdfFile:
             self.imgFigu.tight_layout()
             pdfFile.savefig(self.imgFigu)
-            output = self.out+f"{dtime}_{self.dicID[intID][0]}.pdf"
+            output = self.out+f"{dtime}_{self.dicNames[intID][0]}.pdf"
             self.compylog.info(
                 f"Saved plot {output}!"
             )

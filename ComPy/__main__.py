@@ -598,7 +598,10 @@ def main():
         "-h", "--help", action = "help", 
         help = ("show this help message and exit")
     )
-    
+    group_plot_opt.add_argument(
+        "-c", "--fileclasses", nargs = "*", default = False, 
+        help = ("If different classes should be included in one plot.")
+    )
     
     
     """
@@ -789,7 +792,8 @@ def main():
             argnamelist = args.namelist, argoutput = args.out, 
             argDatabase = args.database, dtime = dtime,
             argthreads = args.threads, argvcfplottable = args.figure, 
-            argyaml = args.yaml, argThreads = args.threads
+            argyaml = args.yaml, argThreads = args.threads,
+            argclass = args.fileclasses
         )
     
     if args.tool == "merge":
