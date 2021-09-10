@@ -395,6 +395,21 @@ class DBManager():
     
     def ExtractTargetInfoDataBAM(table, dbpath, bedid, FileClass, strReduce, 
                                  subsamples):
+        if len(FileClass) > 1 \
+         and type(FileClass) == list:
+            FileClass = tuple(FileClass)
+            key = f"in {FileClass}"
+        else:
+            if type(FileClass) == list:
+                FileClass = FileClass[0]
+            key = f"== '{FileClass}'"
+        # print(
+            # f"SELECT * FROM {table} "
+            # +f"WHERE BedID == {bedid} "
+            # +f"AND Reduced == '{strReduce}' "
+            # +f"AND Subsamples == {subsamples} "
+            # +f"AND FileClass {key};"
+        # )
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
         data = cur.execute(
@@ -402,7 +417,7 @@ class DBManager():
             +f"WHERE BedID == {bedid} "
             +f"AND Reduced == '{strReduce}' "
             +f"AND Subsamples == {subsamples} "
-            +f"AND FileClass == '{FileClass}';"
+            +f"AND FileClass {key};"
         )
         rows = data.fetchall()
         conn.close()
