@@ -10,6 +10,16 @@
  
 plotstyle: "seaborn"
 
+general:
+ headersize: 20
+ xlabel: 10
+ ylabel: 10
+ axlabel: 10
+ title: 16
+ font: 10
+ titlefont: 10
+
+
 boxplots:
  colorcode: 
   - "#808080"
