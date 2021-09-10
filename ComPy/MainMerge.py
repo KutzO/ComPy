@@ -164,17 +164,19 @@ class CompToolMerge():
         dfAdd = pd.DataFrame(columns = ["BedID", "Chrom", "Start", "End"])
         lsBedIDNew = list(set(self.dfBF["BedID"]))
         lsBedIDOld = list(set(dfOldBed["BedID"]))
-        for intID in lsBedIDOld:
-            dfOldSlice = dfOldBed.loc[dfOldBed["BedID"] == intID]
-            for newID in lsBedIDNew:
-                dfNewSlice = self.dfBF.loc[self.dfBF["BedID"] == newID]
+        for newID in lsBedIDNew:
+            dfNewSlice = self.dfBF.loc[self.dfBF["BedID"] == newID]
+            lsBooAdd = []
+            for intID in lsBedIDNew:
+                dfOldSlice = dfOldBed.loc[dfOldBed["BedID"] == intID]
                 booAdd = self.CheckHelper(dfNewSlice, dfOldSlice)
+                lsBooAdd.append(booAdd)
                 # print(booAdd)
                 # sys.exit()
-                if booAdd:
-                    dfAdd = dfAdd.append(
-                        dfNewSlice, ignore_index = True, sort = False
-                    )
+            if not False in lsBooAdd:
+                dfAdd = dfAdd.append(
+                    dfNewSlice, ignore_index = True, sort = False
+                )
         if len(dfAdd.values) > 0:
             lsBedIDNewAdd = list(set(dfAdd["BedID"]))
             for intID in lsBedIDNewAdd:
