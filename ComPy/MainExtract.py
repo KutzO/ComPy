@@ -102,15 +102,17 @@ def CompToolExtract(tool, **kwargs):
         """
         2) Recover .bed file targets from database
         """
-        intBedID = kwargs["argBedfile"]
-        compylog.info(
-            "Recover .bed file targets of BedID : {}".format(intBedID)
-        )
-        clSaveData = WriteCSV(
-            kwargs["argOutput"], classDataBase.pathDB, kwargs["dtime"], 
-            bedid = intBedID
-        )
-        clSaveData.RecoverBED()
+        lsBedID = kwargs["argBedfile"]
+        
+        for intID in lsBedID:
+            compylog.info(
+            "Recover .bed file targets of BedID : {}".format(intID)
+            )
+            clSaveData = WriteCSV(
+                kwargs["argOutput"], classDataBase.pathDB, kwargs["dtime"], 
+                bedid = intID
+            )
+            clSaveData.RecoverBED()
         
         
         

@@ -15,7 +15,7 @@ import time
 import argparse
 import logging 
 import getpass 
-
+from glob import glob
 
 #Own scripts
 from .MainCompare import CompToolCompare
@@ -369,7 +369,7 @@ def main():
     parse_extract_bedrec.set_defaults(tool = "bedrec")
     group_bedrec_req = parse_extract_bedrec.add_argument_group("required")
     group_bedrec_req.add_argument(
-        "-b", "--bed", type = int, 
+        "-b", "--bed", nargs = "*", 
         help = (
             "The .bed identifier of the .bed file you want to be recovered"
         ), 
@@ -675,6 +675,12 @@ def main():
         os.makedirs(
             f"/home/{getpass.getuser()}/ComPy/logs/"
         )
+    #Delete Folder if >100 logs
+    pathlogfiles = glob(f"/home/{getpass.getuser()}/ComPy/logs/*")
+    if len(pathlogfiles) > 100:
+        for f in pathlogfiles:
+            os.remove(f)
+        
     
     #Define global log parameters
     logpath = f"/home/{getpass.getuser()}/ComPy/logs/{dtime}_log.txt"
