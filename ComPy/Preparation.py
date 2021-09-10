@@ -274,6 +274,16 @@ class DataPreparation:
         else:
             self.styleyaml = {}
             self.styleyaml["plotstyle"] = "seaborn" 
+            
+            self.styleyaml["general"] = {}
+            self.styleyaml["general"]["headersize"] = 20
+            self.styleyaml["general"]["xlabel"] = 10
+            self.styleyaml["general"]["ylabel"] = 10
+            self.styleyaml["general"]["axlabel"] = 10
+            self.styleyaml["general"]["title"] = 16
+            self.styleyaml["general"]["font"] = 10
+            self.styleyaml["general"]["titlefont"] = 10
+            
             self.styleyaml["boxplots"] = {}
             self.styleyaml["boxplots"]["colorcode"] = ["#808080"]
             self.styleyaml["boxplots"]["markercolor"] = "orange"
