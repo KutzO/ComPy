@@ -266,8 +266,10 @@ class CompToolMerge():
             lsOldRed = list(dfOld["Reduced"])
             lsNewSub = list(dfNew["Subsamples"])
             lsOldSub = list(dfOld["Subsamples"])
-            lsNew = zip(lsNewMd5, lsNewRed, lsNewSub)
-            lsOld = zip(lsOldMd5, lsOldRed, lsOldSub)
+            lsNewFlag = list(dfNew["Flag"])
+            lsOldFlag = list(dfOld["Flag"])
+            lsNew = zip(lsNewMd5, lsNewRed, lsNewSub, lsNewFlag)
+            lsOld = zip(lsOldMd5, lsOldRed, lsOldSub, lsOldFlag)
         
         counter = 0
         # print(table)

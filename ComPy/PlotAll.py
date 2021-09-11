@@ -178,11 +178,12 @@ class PlotCompAll():
             strReduced = "Yes"
             strReducedDB = 1
         subsamples = dfInfoSample["Subsamples"].values[0]
+        flag = dfInfoSample["Flag"].values[0]
         #fileclass = group
         lsAllData = DBManager.ExtractData(
             "BamInfo", self.pathDB, bedid = bedid, 
             strReduce = strReducedDB, subsamples = subsamples,
-            FileClass = group
+            FileClass = group , Flag = flag
         )    
         # print(lsAllData)
         if len(lsAllData) < 5:
@@ -210,6 +211,7 @@ class PlotCompAll():
                     +f"subsamples = {subsamples}; "
                     +f"reduced= {strReduced}; "
                     +f"FileClass = {group}"
+                    +f"Flag = {flag}"
                 )
                 return dicFilteredData
 
@@ -296,6 +298,7 @@ class PlotCompAll():
             strReduced = "Yes"
         subsamples = dfInfo["Subsamples"].values[0]
         fileclass = dfInfo["FileClass"].values[0]
+        flag = dfInfo["Flag"].values[0]
         
         ###Initialize data
         dfUsedDataStats = AllStats.loc[AllStats["ID"] == intID]
@@ -353,8 +356,14 @@ class PlotCompAll():
         
         
         lsTableSampleBedfile = [
-            ["ID", intID, "Number targets in bed file", numTargets], 
-            ["Bed ID", bedid, "Largest target size", maxTarget], 
+            [
+                "ID", intID, 
+                "Number targets in bed file", numTargets
+            ], 
+            [
+                "Bed ID", bedid, 
+                "Largest target size", maxTarget
+            ], 
             [
                 "Reduced targets", strReduced, 
                 "Smallest target size", minTarget
@@ -363,7 +372,10 @@ class PlotCompAll():
                 "Read samples for QC", subsamples, 
                 "Average target size", avrgTarget
             ], 
-            ["File group", fileclass, "Average gc content", meanGC], 
+            [
+                "File group", fileclass, 
+                "Average gc content", meanGC
+            ], 
         ]
         
         
@@ -388,7 +400,7 @@ class PlotCompAll():
             ],
             [
                 "Size database", sizeDb, 
-                "Used groups", group
+                "Used groups, flag", [group, flag]
             ],
         ]
         table_a = self.ax7.table(

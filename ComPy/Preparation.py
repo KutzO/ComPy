@@ -17,13 +17,14 @@ class DataPreparation:
                  ReduceBed = False, version = False, checksum = False, 
                  nameTable = False, vcfPlot = False, FileClass = False,
                  intID = False, Datatype = False, lsbamid = False,
-                 lsvcfid = False, styleyaml = False):
+                 lsvcfid = False, styleyaml = False, flag = False):
         
         self.dbpath = DBpath
         self.booDB = booDB
         self.subsample = subsample
         self.version = version
         self.dtime = dtime
+        self.flag = flag
         
         if FileClass:
             self.FileClass = FileClass
@@ -275,14 +276,23 @@ class DataPreparation:
             self.styleyaml = {}
             self.styleyaml["plotstyle"] = "seaborn" 
             
-            self.styleyaml["general"] = {}
-            self.styleyaml["general"]["headersize"] = 20
-            self.styleyaml["general"]["xlabel"] = 10
-            self.styleyaml["general"]["ylabel"] = 10
-            self.styleyaml["general"]["axlabel"] = 10
-            self.styleyaml["general"]["title"] = 16
-            self.styleyaml["general"]["font"] = 10
-            self.styleyaml["general"]["titlefont"] = 10
+            self.styleyaml["compare"] = {}
+            self.styleyaml["compare"]["headersize"] = 20
+            self.styleyaml["compare"]["xlabel"] = 10
+            self.styleyaml["compare"]["ylabel"] = 10
+            self.styleyaml["compare"]["axlabel"] = 10
+            self.styleyaml["compare"]["title"] = 16
+            self.styleyaml["compare"]["font"] = 10
+            self.styleyaml["compare"]["titlefont"] = 10
+            
+            self.styleyaml["database"] = {}
+            self.styleyaml["database"]["headersize"] = 20
+            self.styleyaml["database"]["xlabel"] = 10
+            self.styleyaml["database"]["ylabel"] = 10
+            self.styleyaml["database"]["axlabel"] = 10
+            self.styleyaml["database"]["title"] = 16
+            self.styleyaml["database"]["font"] = 10
+            self.styleyaml["database"]["titlefont"] = 10
             
             self.styleyaml["boxplots"] = {}
             self.styleyaml["boxplots"]["colorcode"] = ["#808080"]
@@ -613,6 +623,7 @@ class DataPreparation:
                 & (data["Subsamples"] == intSubsample)
                 & (data["Checksum"] == checksum)
                 & (data["FileClass"] == fileclass)
+                & (data["Flag"] == self.flag)
                 & (data["Finished"] == "Yes")
             ]
             if len(sliceddata.values) > 0:
@@ -631,7 +642,7 @@ class DataPreparation:
                     +f"the database! Reduced: {strReduce}, "
                     +f"Version: {version}, Subsamples: {intSubsample}, "
                     +f"FileClass: {fileclass}, ID: {intID}, "
-                    +f"MD5_Sum: {checksum}"
+                    +f"MD5_Sum: {checksum}, Flag: {self.flag}"
                 )
                 booAdd = False
                 # intID = bamfiles[1]
@@ -828,7 +839,7 @@ class DataPreparation:
             DBManager.InsertData(
                 (
                     argname, self.ID, self.bedid, self.version, self.Reduce, 
-                    self.subsample, checksum, self.FileClass, "No",
+                    self.subsample, checksum, self.FileClass, self.flag, "No",
                     self.dtime
                 ), 
                 "BamInfo", 

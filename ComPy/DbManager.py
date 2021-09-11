@@ -181,7 +181,7 @@ class DBManager():
         )
         lsBamInfo = str(
             "(BAM STRING, ID INT, BedID INTEGER, Version STRING, Reduced INTEGER, "
-            +"Subsamples INTEGER, Checksum, FileClass, Finished STRING, "
+            +"Subsamples INTEGER, Checksum, FileClass, Flag, Finished STRING, "
             +"Date STRING)"
         )
         lsVar = str(
@@ -394,7 +394,7 @@ class DBManager():
 
     
     def ExtractTargetInfoDataBAM(table, dbpath, bedid, FileClass, strReduce, 
-                                 subsamples):
+                                 subsamples, flag):
         if len(FileClass) > 1 \
          and type(FileClass) == list:
             FileClass = tuple(FileClass)
@@ -417,6 +417,7 @@ class DBManager():
             +f"WHERE BedID == {bedid} "
             +f"AND Reduced == '{strReduce}' "
             +f"AND Subsamples == {subsamples} "
+            +f"AND Flag == {flag} "
             +f"AND FileClass {key};"
         )
         rows = data.fetchall()

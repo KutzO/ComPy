@@ -153,7 +153,8 @@ def CompToolCompare(tool, **kwargs):
                 vcf=kwargs["argVcffiles"], ReduceBed=kwargs["argReduce"], 
                 version=kwargs["strVersion"], checksum = dicCheckSums, 
                 nameTable = kwargs["argNameTable"], 
-                FileClass= kwargs["argClass"], styleyaml = kwargs["argyaml"]
+                FileClass= kwargs["argClass"], styleyaml = kwargs["argyaml"],
+                flag = kwargs["argflag"]
             )     
         elif tool == "bam":
             classPrep = DataPreparation(
@@ -163,7 +164,8 @@ def CompToolCompare(tool, **kwargs):
                 dtime=kwargs["dtime"], outputpath=kwargs["argOutput"], 
                 ReduceBed=kwargs["argReduce"], version=kwargs["strVersion"], 
                 checksum = dicCheckSums, nameTable = kwargs["argNameTable"], 
-                FileClass= kwargs["argClass"], styleyaml = kwargs["argyaml"]
+                FileClass= kwargs["argClass"], styleyaml = kwargs["argyaml"],
+                flag = kwargs["argflag"]
             ) 
         elif tool == "vcf":
             classPrep = DataPreparation(
@@ -262,7 +264,7 @@ def CompToolCompare(tool, **kwargs):
                         classDataBase.pathDB, kwargs["argSubsamples"], 
                         kwargs["strVersion"], kwargs["lsCompatibleVersions"], 
                         kwargs["argReduce"], intID, kwargs["argClass"],
-                        kwargs["dtime"]
+                        kwargs["dtime"], flag = kwargs["argflag"]
                     )
                     listOfBamClasses.append(ExtractProg)
             
