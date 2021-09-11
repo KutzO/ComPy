@@ -9,6 +9,7 @@ import math
 from .DbManager import DBManager
 import logging
 import sys
+import numpy as np
 
 """
 Class for extracting all data from given .bam files
@@ -17,7 +18,7 @@ Class for extracting all data from given .bam files
 class ExtractInfoData():
     def __init__(self, bam, bamname, ref, threads, dictargets, bedid,
                  pathDB, subsample, version, lsCompatibleVersions, 
-                 reducedBed, intID, FileClass, dtime):
+                 reducedBed, intID, FileClass, dtime, flag):
         self.version = version                                                 #Current version
         self.lsVersions = lsCompatibleVersions
         self.ID = intID
@@ -39,14 +40,46 @@ class ExtractInfoData():
             self.FileClass = FileClass
         else:
             self.FileClass = "Default"
-            
+        
+        self.dicHexa = {
+            1   :   1,
+            2   :   2,
+            4   :   4,
+            8   :   8,
+            16  :  10,
+            32  :  20,
+            64  :  40,
+            128 :  80,
+            256 : 100,
+            512 : 200,
+            1024: 400,
+            2048: 800,
+        }
+
+        self.dicFlagFilter = {
+            1  : self.paired,
+            2  : self.proper,
+            4  : self.unmapp,
+            8  : self.mateunmap,
+            10 : self.revori,
+            20 : self.materevori,
+            40 : self.readone,
+            80 : self.readtwo,
+            100: self.secundary,
+            200: self.qcfail,
+            400: self.dupli,
+            800: self.suply,
+        }
+        
         #Initiale logging tool
         self.compylog = logging.getLogger("ComPy")
         
         self.compylog.info("Getting number of reads per chromosome")
         self.GetReadNumbers()
+        self.FlagFilter = self.GetFlags(flag)
         #self.test = test
             
+        
 
     ###Extract information about mapped reads, unmapped reads and total number of reads (per chromosome)
     def GetReadNumbers(self):
@@ -127,7 +160,101 @@ class ExtractInfoData():
         
         
         
+    def GetFlags(self, number):
+    lsFunc = []
+    while True:
+        lsHexa = list(self.dicHexa.keys())
+        for i in range(0, len(lsHexa)):
+            value = lsHexa[i]
+            if value > number:
+                number -= lsHexa[i-1]
+                #print(number)
+                lsFunc.append((self.dicHexa[lsHexa[i-1]]))
+                break
+        if number > max(lsHexa):
+            number -= max(lsHexa)
+            lsFunc.append(self.dicHexa[max(lsHexa)])
+        if number == 0:
+            #print(True)
+            break
+    lsFunc = list(set(lsFunc))
+    lsFunc.sort()
+    return lsFunc
+
+
+    def unmapp(self, read):
+        if read.is_unmapped:
+            return True
+        else:
+            return False
+
+    def paired(self, read):
+        if read.is_paired:
+            return True
+        else:
+            return False
+
+    def proper(self, read):
+        if read.is_proper_pair:
+            return True
+        else:
+            return False
+
+    def mateunmap(self, read):
+        if read.mate_is_unmapped:
+            return True
+        else:
+            return False
+
+    def revori(self, read):
+        if read.is_reverse:
+            return True
+        else:
+            return False
+
+    def materevori(self, read):
+        if read.mate_is_reverse:
+            return True
+        else:
+            return False
         
+    def readone(self, read):
+        if read.is_read1:
+            return True
+        else:
+            return False
+
+    def readtwo(self, read):
+        if read.is_read2:
+            return True
+        else:
+            return False
+
+
+    def secundary(self, read):
+        if read.is_secondary:
+            return True
+        else:
+            return False
+
+
+    def qcfail(self, read):
+        if read.is_qcfail:
+            return True
+        else:
+            return False
+
+    def dupli(self, read):
+        if read.is_duplicate:
+            return True
+        else:
+            return False
+
+    def suply(self, read):
+        if read.is_supplementary:
+            return True
+        else:
+            return False    
         
     """
     The main extraction function.
@@ -263,12 +390,12 @@ class ExtractInfoData():
                 lsPHREDrev.append(_[0])
         
         #Adding information about read length to define position
-        lsPHREDfwd.append([x for x in range(1,max(dictLenFwd.keys())+1)])
-        lsPHREDrev.append([x for x in range(1,max(dictLenRev.keys())+1)])
+        lsPHREDfwd.append([x for x in range(1, max(dictLenFwd.keys()) + 1)])
+        lsPHREDrev.append([x for x in range(1, max(dictLenRev.keys()) + 1)])
         
         #Merge all PHRED scores from all chromosomes
-        zippedphredfwd = list(itertools.zip_longest(*lsPHREDfwd))
-        zippedphredrev = list(itertools.zip_longest(*lsPHREDrev))
+        zippedphredfwd = list(itertools.zip_longest( * lsPHREDfwd))
+        zippedphredrev = list(itertools.zip_longest( * lsPHREDrev))
         
         #Calculate mean + std with CalcPHRED() function
         pool = multiprocessing.Pool(processes=self.threads)
@@ -348,6 +475,7 @@ class ExtractInfoData():
                         chromosom, start=target[0]-1,end=target[1]
                     )
                 )
+                # meanc = np.mean(bamfile.count_coverage(chromosom, start=target[0]-1,end=target[1]))
                 """
                 Iteration durch readklassen und nur mit wichtigen Infos in dataframe
                     --> Aus DF dann random samples ziehen
@@ -375,10 +503,14 @@ class ExtractInfoData():
                 
                 lsReadPhred = []
                 lsReadOri = []
+                lsCovLen = []
+                dicNames = {}
                 countreads = 0
                 countmatch = 0
                 OnTrg = 0
                 Total = 0
+                # lsRange = [0 for x in range(target[0], target[1])]
+                # lsCov = []
                 for read in lsFetchBam:
                     #Pick rnd reads and determine wether the read is mate 1 ("fwd") or mate 2 ("rev")
                     if len(lsRandom) > 1:
@@ -409,40 +541,95 @@ class ExtractInfoData():
                     
                     #Identify total number of reads and reads which mapped on target
                     Total += 1
-                    if read.is_unmapped:
+                    lsFlagCheck = []
+                    for i in self.FlagFilter:
+                        lsFlagCheck.append(self.dicFlagFilter[i](read))
+                    if True in lsFlagCheck:
                         pass
                     else:
+                    # if read.is_unmapped:
+                        # pass
+                    # else:
+                        # lsAdd = lsRange[:]
+                        # lsAdd[read.qstart] = 1
+                        # try:
+                            # lsAdd[read.qend] = -1
+                        # except:
+                            # pass
+                        # lsCov.append(lsAdd)
                         OnTrg += 1
-                        
+                        if read.qname not in dicNames.keys():
+                            dicNames[read.qname] = [read.query_alignment_start, read.query_alignment_end]
+                        else:
+                            if read.query_alignment_start in range(dicNames[read.qname][0], dicNames[read.qname][1]):
+                                newend = read.query_alignment_length - (dicNames[read.qname][1] - read.query_alignment_start)
+                                realend = dicNames[read.qname][1] + newend
+                                dicNames[read.qname][1] = realend
+                            else:
+                                dicNames[read.qname][1] = dicNames[read.qname][1] + read.query_alignment_length
+                        # lsCovLen.append(read.query_alignment_length)
+                # arrCov = np.array(lsCov)
+                # lsSum = np.sum(arrCov, axis = 0)
+                #print(lsSum)
+                # try:
+                    # intAdd = 0
+                    # counter = 0
+                    # for _ in lsSum:
+                        # lsSum[counter] = lsSum[counter] + intAdd
+                        # intAdd = _
+                        # counter += 1
+                    # cov = statistics.mean(lsSum)
+                    
+                #print(lsSum)
+                # try:
+                    # cov = statistics.mean(lsSum)
+                    
+                # if type(lsSum) == np.float64:
+                    # if lsSum == 0:
+                     # cov = 0
+                # except:
+                    # lsSum == 0
+                    # cov = 0
+                #except Exception as e:
+                #    print(lsSum)
+                    #raise SystemError(e)
+                # lsmeanc.append(cov)
+                
                 lsTotal.append(Total)
                 lsOnTrg.append(OnTrg)
                 lsTargets.append(target)
                 arlsReadPhred.append(lsReadPhred)
                 arlsReadOri.append(lsReadOri)
 
-                lsLenTotal = []
-                for length in dicReadLenFwd.keys():
-                    lsLenTotal += [
-                        length for x in range(dicReadLenFwd[length])
-                    ]
-                try:
-                    mReadLFwd = sum(lsLenTotal)/len(lsLenTotal)
-                except:
-                    self.compylog.info(f"No reads found at target: {target}")
-                    mReadLFwd = 0
-                lsLenTotal = []
-                for length in dicReadLenRev.keys():
-                    lsLenTotal += [
-                        length for x in range(dicReadLenRev[length])
-                    ]
-                try:
-                    mReadLRev = sum(lsLenTotal)/len(lsLenTotal)
-                except:
-                    mReadLRev = 0
+                # lsLenTotal = []
+                # for length in dicReadLenFwd.keys():
+                    # lsLenTotal += [
+                        # length for x in range(dicReadLenFwd[length])
+                    # ]
+                # try:
+                    # mReadLFwd = sum(lsLenTotal)/len(lsLenTotal)
+                # except:
+                    # self.compylog.info(f"No reads found at target: {target}")
+                    # mReadLFwd = 0
+                # lsLenTotal = []
+                # for length in dicReadLenRev.keys():
+                    # lsLenTotal += [
+                        # length for x in range(dicReadLenRev[length])
+                    # ]
                 
                 
-                meanc = OnTrg *(mReadLFwd + mReadLRev) \
-                        / abs(target[0] - target[1])
+                # try:
+                    # mReadLRev = sum(lsLenTotal)/len(lsLenTotal)
+                # except:
+                    # mReadLRev = 0
+                # meanc = OnTrg *((mReadLFwd + mReadLRev) / 2) \
+                        # / abs(target[0] - target[1])
+                if OnTrg != 0:
+                    # meanc = OnTrg * statistics.mean(lsCovLen) \
+                             # / abs(target[0] - target[1])
+                    meanc = sum([x[1] - x[0] for x in dicNames.values()]) / abs(target[1] - target[2])
+                else:
+                    meanc = 0
                 lsmeanc.append(meanc)
 
             return chromosom, targets, lsTotal, lsOnTrg, lsmeanc, gc, \

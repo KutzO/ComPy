@@ -144,6 +144,12 @@ def main():
             "Comma separated (.csv) table which .vcf data should be compared"
         )
     )
+    group_all_opt.add_argument(
+        "-u", "--flag", type = int, default = 772,
+        help = (
+            "Exclude reads with any bit of the flag from analysis (default = 772)"
+        )
+    )
     
     ###
     #Tool to compare .bam files only
@@ -219,7 +225,12 @@ def main():
         "-y", "--yaml", default = False,
         help = ("Path to the style .yaml.")
     )
-    
+    group_bam_opt.add_argument(
+        "-u", "--flag", type = int, default = 772,
+        help = (
+            "Exclude reads with any bit of the flag from analysis (default = 772)"
+        )
+    )
     
     
     ####
@@ -715,7 +726,7 @@ def main():
             dtime = dtime, strVersion = strVersion, 
             lsCompatibleVersions = lsCompatibleVersions, 
             argNameTable = args.assign, argVcfPlotTable = args.figure, 
-            argClass = args.fileclass, argyaml = args.yaml
+            argClass = args.fileclass, argyaml = args.yaml, argflag = args.flag
         )
     if args.tool == "bam":
         CompToolCompare(
@@ -726,7 +737,7 @@ def main():
             argIndex = args.index, dtime = dtime, strVersion = strVersion, 
             lsCompatibleVersions = lsCompatibleVersions, 
             argNameTable = args.assign, argClass = args.fileclass,
-            argyaml = args.yaml
+            argyaml = args.yaml, argflag = args.flag
         )
     if args.tool == "vcf":
         CompToolCompare(
