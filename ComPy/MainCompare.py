@@ -19,14 +19,7 @@ from .PlotAll import PlotCompAll
 
 
 
-# def CheckSumGenerator(file, chunksize=8192, checksumgenerator = hashlib.sha256()):
-#     with open(file, "rb") as bytefile:
-#         chunk = bytefile.read(chunksize)
-#         while len(chunk) > 0:
-#             checksumgenerator.update(chunk)
-#             chunk = bytefile.read(chunksize)
-#     return [checksumgenerator.hexdigest(), file]
-
+###Helper tool for calculate MD5 - checksum
 def TestHash(file):
     a = hashlib.md5()
     with open(file, "rb") as readfile:
@@ -58,6 +51,7 @@ def CompToolCompare(tool, **kwargs):
         """
             
         ###Prepare database
+        compylog.info("Prepare database")
         classDataBase = DBManager(DBpath=kwargs["argDatabase"])                
         
         
@@ -66,11 +60,10 @@ def CompToolCompare(tool, **kwargs):
         """
         ###Calculate checksums        
         dicCheckSums = {}
-        compylog.info("Creating checksums")
+        compylog.info("Calculate checksums")
         print("Create checksums (md5) of input data")
         
         #Calculate .bam checksums
-        
         if tool in ["bam", "all"]:
             lsCheckSumBam = []
             pool = multiprocessing.Pool(processes=kwargs["argThreads"])
@@ -86,7 +79,7 @@ def CompToolCompare(tool, **kwargs):
             
             pool.close()
 
-
+        #Calculate .vcf checksums
         if tool in ["vcf", "all"]:
             lsCheckSumVcf = []
             pool = multiprocessing.Pool(processes=kwargs["argThreads"])
@@ -101,50 +94,15 @@ def CompToolCompare(tool, **kwargs):
                 compylog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
             
             pool.close()
-        #sys.exit()
-        
-        # if tool in ["bam", "all"]:
-        #     lsCheckSumBam = []
-        #     pool = multiprocessing.Pool(processes=kwargs["argThreads"])
-        #     Jobs = []
-        #     for file in kwargs["argBamfiles"]:
-        #         Jobs.append(pool.apply_async(CheckSumGenerator, args=(file,)))
-        #     for job in tqdm(Jobs):
-        #         tmpCheckSum = job.get()
-        #         lsCheckSumBam.append(tmpCheckSum[:])
-        #     for calcsum in lsCheckSumBam:
-        #         dicCheckSums[calcsum[0]] = calcsum[1]
-        #         compylog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
-            
-        #     pool.close()
-        
-        #Calculate .vcf checksums
-        # if tool in ["vcf", "all"]:
-        #     lsCheckSumVcf = []
-        #     pool = multiprocessing.Pool(processes=kwargs["argThreads"])
-        #     Jobs = []
-        #     for file in kwargs["argVcffiles"]:
-        #         # with gzip.open(file) as hashfile:
-        #             # hashtag = hashlib.md5(hashfile).hexdigest()
-        #             # lsCheckSumVcf.append(hashtag)
-        #         # lsCheckSumVcf.append(hashlib.md5(file).hexdigest())
-        #         Jobs.append(pool.apply_async(CheckSumGenerator, args=(file,)))
-        #         # Jobs.append(pool.apply_async(hashlib.md5, args=(file,)))
-        #     for job in tqdm(Jobs):
-        #         lsCheckSumVcf.append(job.get())
-        #     for calcsum in lsCheckSumVcf:
-        #         dicCheckSums[calcsum[0]] = calcsum[1]
-        #         compylog.info(f"md5{calcsum[0]} : name:{calcsum[1]}")
-        #     pool.close()
+
 
 
         """
         3) Prepare the data
         """
         ###Prepare arguments
-        #Class defined in Preparation.py
-        #print(classDataBase.booDB)
         if tool == "all":
+            compylog.info("Prepare arguments")
             classPrep = DataPreparation(
                 "compare", bam=kwargs["argBamfiles"], 
                 DBpath=classDataBase.pathDB, booDB=classDataBase.booDB, 
@@ -157,6 +115,7 @@ def CompToolCompare(tool, **kwargs):
                 flag = kwargs["argflag"]
             )     
         elif tool == "bam":
+            compylog.info("Prepare arguments")
             classPrep = DataPreparation(
                 "compare", bam=kwargs["argBamfiles"], 
                 DBpath=classDataBase.pathDB, booDB=classDataBase.booDB, 
@@ -168,6 +127,7 @@ def CompToolCompare(tool, **kwargs):
                 flag = kwargs["argflag"]
             ) 
         elif tool == "vcf":
+            compylog.info("Prepare arguments")
             classPrep = DataPreparation(
                 "compare", DBpath = classDataBase.pathDB, 
                 booDB = classDataBase.booDB, dtime = kwargs["dtime"], 
@@ -178,6 +138,7 @@ def CompToolCompare(tool, **kwargs):
                 styleyaml = kwargs["argyaml"]
             )     
 
+
         """
         4) Generate index files (if --index was parsed)
         """
@@ -185,14 +146,13 @@ def CompToolCompare(tool, **kwargs):
         if tool in ["bam", "all"]: 
             if kwargs["argIndex"]:
                 compylog.info(
-                    "Index files will be created! This will take some time...."
+                    "Index files will be created!"
                 )
                 print("Creating index files")
                 pool = multiprocessing.Pool(processes=kwargs["argThreads"])
                 lsJobs = []
                 for lsValues in classPrep.dicIDs["bam"].values():
                     if lsValues[0] in classPrep.bamnamestodb:
-                        # print(lsValues[1])
                         lsJobs.append(
                             pool.apply_async(
                                 pysam.index, args = (lsValues[1],)
@@ -203,33 +163,13 @@ def CompToolCompare(tool, **kwargs):
                 pool.close()
                 compylog.info("Finished creating index file")
                     
-                #     print(lsValues)
-                # sys.exit()
-                # for intID in classPrep.dicIDs:
-                #     print(classPrep.dicIDs.keys())
-                #     if classPrep.dicIDs["bam"][intID][0] in \
-                #             classPrep.bamnamestodb:
-                #         lsJobs.append(
-                #             pool.apply_async(
-                #                 pysam.index, args=(
-                #                             classPrep.dicIDs[intID][1],
-                #                              )
-                #             )
-                #         )
-                # for job in tqdm(lsJobs):
-                #     job.get()
-                # pool.close()
-                # compylog.info("Finished creating index file")
-    
-    
-    
     
         """
         START OF THE MAIN PROGRAM
         
             1) Extraction of .bam data  (if not done previous)
             2) Extraction of .vcf data  (if provided and not done previous)
-            3) Plotting the data        (if not present in output folder)
+            3) Plotting the data        
             4) Collect all plots to generate final output
             5) Compare each sample with whole database
         """
@@ -239,13 +179,13 @@ def CompToolCompare(tool, **kwargs):
         Extracting information from each bam file which is not yet listed in the database
             a) Extract the readnumbers (total, mapped, unmapped) at each chromosome given from the bed file
             b) Extract QC data 
-                b.1) Gather read PHRED scores (default = 100_000) from each chromosome 
+                b.1) Gather read PHRED scores from each chromosome 
                         --> check if fwd or rev read
-                        --> Reads are picked using the python pseudorandom generator (random.shuffle)
+                        --> Reads are picked using the python pseudorandom generator
                 b.2) Gather readlength (All reads!)
                 b.3) Count number of mapped reads per target (considering all reads)
                 b.4) Calculate mean GC content per target using reference
-                b.5) Calculate mean Coverage per target using pysamstats together with various other data (see ExtractFromBam.py for more information or convert data to .xlsx to see outcome)
+                b.5) Calculate mean Coverage per target 
                 b.6) Calculate read length distribution
                 b.7) Calculate mean PHRED score per readbase together with standard derivation
             c) Save all data to database
@@ -288,8 +228,6 @@ def CompToolCompare(tool, **kwargs):
         """
         if tool in ["all", "vcf"]:
             if len(classPrep.vcfnames) != 0: 
-                # print(len(classPrep.vcfnames))
-                #sys.exit()
                 compylog.info("Extracting .vcf files")
                 print("Extracting .vcf files")
                 VCFextraction = ExtractFromVCF( 
@@ -307,7 +245,7 @@ def CompToolCompare(tool, **kwargs):
         print("Plotting data")
         
         if tool == "all":
-        #Class is defined in script PlotData.py
+            compylog.info("Plotting all data")
             PlotClass = PlotTheData(
                 tool, classPrep.outputpathTmp, classPrep.outputpath, 
                 classDataBase.pathDB, threads = kwargs["argThreads"],  
@@ -316,18 +254,16 @@ def CompToolCompare(tool, **kwargs):
                 styleyaml = classPrep.styleyaml
             )
 
-
-        
         if tool == "bam":
+            compylog.info("Plotting only bam data")
             PlotClass = PlotTheData(
                 tool, classPrep.outputpathTmp, classPrep.outputpath, 
                 classDataBase.pathDB, threads = kwargs["argThreads"], 
                 dicIDs = classPrep.dicIDs, styleyaml = classPrep.styleyaml
             )
-
-
-                 
+       
         if tool == "vcf":
+            compylog.info("Plotting only vcf data")
             PlotClass = PlotTheData(
                 tool, classPrep.outputpathTmp, classPrep.outputpath, 
                 classDataBase.pathDB, threads = kwargs["argThreads"], 
@@ -340,6 +276,7 @@ def CompToolCompare(tool, **kwargs):
         4) Merge all plots and generate final output
         """
         print("Create sample comparison")
+        compylog.info("Merge plots")
         PlotClass.MergeAllPlots(kwargs["dtime"])
 
         
@@ -348,6 +285,7 @@ def CompToolCompare(tool, **kwargs):
         """
         if tool in ["all", "bam"]:
             print("Start individual comparison")
+            compylog.info("Start individual comparison")
             PlotCompAll(
                 classDataBase.pathDB, kwargs["dtime"], 
                 classPrep.outputpath, kwargs["argThreads"], 
