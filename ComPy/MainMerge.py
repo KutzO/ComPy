@@ -15,51 +15,80 @@ import pandas as pd
 from .DbManager import DBManager
 from .Preparation import DataPreparation 
 
+
+###Tool to merge databases
 class CompToolMerge():
     def __init__(self, argnewdb = False, argolddb = False, argxlsx = False, 
                  argbed = False):
+        
+        ###Define global variables
         self.newdb = argnewdb
         self.xlsx = argxlsx
         self.bed = argbed
         
+        ###Initiale logging tool
+        self.compylog = logging.getLogger("ComPy")
+        
+        ###Start merging
+        self.compylog.info("Start merge")
         self.DoMerge(argolddb)
+
         
         
-        
-        
-        
-        
-        
+    ###Function which manages database merging
     def DoMerge(self, argolddb):
+        #Define database to be expanded
         classDataBase = DBManager(argolddb)
         self.olddb = classDataBase.pathDB
+        self.compylog.info(f"Database to be expanded {classDataBase.pathDB}")
+        
+        #Define if data derived from other database or .xlsx
         if self.newdb:    
+            self.compylog.info(f"New database provided {self.newdb}")
             self.GetData()
             
         elif self.xlsx:
+            self.compylog.info(f"Excel files provided {self.xlsx}, {self.bed}")
             lsPathExcel, lsPathBed = self.ControlExcelTables()
             self.GetData(lsPathExcel, lsPathBed)
         
+        #Make sure to not include files already present in database
+        self.compylog.info("Check bedfiles")
         dicBedID, self.dfBF = self.CheckBed()
+        self.compylog.info("Check bamfiles")
         dicBamID = self.CheckFileID("BamInfo", self.dfBamI, "ID")
+        self.compylog.info("Check vcf files")
         dicVcfID = self.CheckFileID("VCFInfo", self.dfVI, "ID")
         
+        #Adjust IDs of new data to make sure every ID is unique
+        self.compylog.info("Adjust dataframes")
         self.AdjustDf(dicBedID, dicBamID, dicVcfID)
+        
+        #Save adjusted data to database
+        self.compylog.info("Add adjusted data to database")
         self.UpdateDB(self.dfBedI.values, "BedInfo")
+        self.compylog.info("BedInfo done!")
         self.UpdateDB(self.dfBF.values, "Bedfiles")
+        self.compylog.info("Bedfiles done!")
         self.UpdateDB(self.dfBamI.values, "BamInfo")
+        self.compylog.info("BamInfo done!")
         self.UpdateDB(self.dfRM.values, "ReadMapping")
+        self.compylog.info("ReadMapping done!")
         self.UpdateDB(self.dfRS.values, "ReadStatistiks")
+        self.compylog.info("ReadStatistiks done!")
         self.UpdateDB(self.dfQC.values, "QCmetrics")
+        self.compylog.info("QCmetrics done!")
         self.UpdateDB(self.dfVI.values, "VCFInfo")
+        self.compylog.info("VCFInfo done!")
         self.UpdateDB(self.dfE.values, "Extracted_Variants")
-        # self.UpdataDB(self.dfSO, "Sorted_out")
+        self.compylog.info("Extracted_Variants done!")
+        self.compylog.info("Merge completed!")
+
       
             
             
-            
+    ###Function to check complete input data
     def ControlExcelTables(self):
-        compylog = logging.getLogger("ComPy")
         lsAllPathExcel = [glob(x)[0] for x  in self.xlsx]
         pathBed = [glob(x)[0] for x in self.bed]
         lsGivenNames = [x.split("/")[-1] for x in lsAllPathExcel]
@@ -70,15 +99,18 @@ class CompToolMerge():
                         "BamInfo", "BedInfo", "VCFInfo"]
         lsLost = []
         if len(lsGivenNames) > len(lsAllTables):
-            compylog.error("To many .xlsx provided!")
+            self.compylog.error("To many .xlsx provided!")
             print(
                 "Please make sure to insert only following files: "
                 +f"{lsAllTables}"
             )
+            sys.exit()
         if len(pathBed) == 0:
+            self.compylog.error("No bed file .xlsx provided!")
             print(
                 "No .bed file was provided. Please provide a fitting .bed file!"
             )
+            sys.exit()
         for table in lsAllTables:
             if table not in lsGivenNames:
                 lsLost.append(table)
@@ -92,6 +124,9 @@ class CompToolMerge():
 
 
 
+
+
+    ###Function to get new data
     def GetData(self, datafiles = False, bedfiles = False):
         if self.newdb:
             self.dfBedI = DBManager.ExtractData(
@@ -118,7 +153,6 @@ class CompToolMerge():
             self.dfE = DBManager.ExtractData(
                 "Extracted_Variants", self.newdb, ALL = True
             )
-            # self.dfSO = DBManager.ExtractData("Sorted_out", self.olddb, ALL = True)
         
         else:
             pathBedI = [x for x in datafiles if "BedInfo" in x][0]
@@ -148,35 +182,45 @@ class CompToolMerge():
             
             pathE = [x for x in datafiles if "Extracted_Variants" in x][0]
             self.dfE = pd.read_excel(pathE)
-            
-            # pathSO = [x for x in datafiles if "Sorted_out" in x][0]
-            # self.dfSO = pd.read_excel(pathSO)
-            
+        
+        #Make sure info BLOB is now type string
         self.dfE["Info"] = self.dfE["Info"].astype(str)
 
 
 
 
-        
+    ###Function to check bed file IDs to avoid duplicate IDs
     def CheckBed(self):
+        #Define dic with IDs to be added
         dicBedID = {}
+        
+        #Define dic with IDs already present in database
+        dicBedPresent = {}
+        
+        #Get information from both bedfile tables
         dfOldBed = DBManager.ExtractData("Bedfiles", self.olddb, ALL = True)
         dfAdd = pd.DataFrame(columns = ["BedID", "Chrom", "Start", "End"])
         lsBedIDNew = list(set(self.dfBF["BedID"]))
         lsBedIDOld = list(set(dfOldBed["BedID"]))
+        
+        #Exclude bedfiles already present in database
         for newID in lsBedIDNew:
             dfNewSlice = self.dfBF.loc[self.dfBF["BedID"] == newID]
             lsBooAdd = []
-            for intID in lsBedIDNew:
+            for intID in lsBedIDOld:
                 dfOldSlice = dfOldBed.loc[dfOldBed["BedID"] == intID]
                 booAdd = self.CheckHelper(dfNewSlice, dfOldSlice)
                 lsBooAdd.append(booAdd)
-                # print(booAdd)
-                # sys.exit()
+                if not booAdd:
+                    dicBedPresent[newID] = intID
             if not False in lsBooAdd:
                 dfAdd = dfAdd.append(
                     dfNewSlice, ignore_index = True, sort = False
                 )
+            else:
+                self.compylog.info(f"Bed file {newID} is already present in database!")
+        
+        #Make sure to insert new unique IDs
         if len(dfAdd.values) > 0:
             lsBedIDNewAdd = list(set(dfAdd["BedID"]))
             for intID in lsBedIDNewAdd:
@@ -194,18 +238,23 @@ class CompToolMerge():
                 if not booCheck:
                     dicBedID[intID] = len(lsBedIDOld) + 1 
                     lsBedIDOld.append(len(lsBedIDOld) + 1)
+                self.compylog.info(f"Bed file ID {intID} now changed to ID {dicBedID[intID]}")
             for intID in lsBedIDNew:
                 if intID not in lsBedIDNewAdd:
-                    dicBedID[intID] = intID
+                    dicBedID[intID] = dicBedPresent[intID]
+                    self.compylog.info(f"Bed file ID {intID} now changed to ID {dicBedID[intID]}")
         else:
+            #If no new bedfiles are provided create empty dataframe
             for intID in lsBedIDNew:
-                dicBedID[intID] = intID
+                dicBedID[intID] = dicBedPresent[intID]
+                self.compylog.info(f"Bed file ID {intID} now changed to ID {dicBedID[intID]}")
             self.dfBedI = pd.DataFrame(columns=["BedID", "Date"])
         return dicBedID, dfAdd
 
 
 
-        
+
+    ###Helper function to compare bedfiles
     def CheckHelper(self, dfNew, dfOld):
         dfNew = dfNew[["Chrom", "Start", "End"]]
         dfOld = dfOld[["Chrom", "Start", "End"]]
@@ -220,11 +269,17 @@ class CompToolMerge():
         return False 
         
     
-            
     
+            
+    ###Function to make sure file IDs are always unique
     def CheckFileID(self, table, newDf, col):
+        #Extract dataframe with data present in database
         dfOld = DBManager.ExtractData(table, self.olddb, ALL = True)
+        
+        #Check if data is duplicated
         newDf = self.SortOutPresentSamples(table, newDf, dfOld)
+        
+        #Identify unique IDs for every new data
         dicID = {}
         lsNewID = list(set(newDf[col]))
         lsOldID = list(set(dfOld[col]))
@@ -234,15 +289,18 @@ class CompToolMerge():
                 for newID in range(1, len(lsOldID) + 1):
                     if newID not in lsOldID:
                         dicID[intID] = newID
+                        self.compylog.info(f"Bed file ID {intID} now changed to ID {newID}")
                         booFound = True
                         lsOldID.append(newID)
                         break
             else:
                 dicID[intID] = intID
+                self.compylog.info(f"Bed file ID {intID} now changed to ID {intID}")
                 lsOldID.append(intID)
                 booFound = True
             if not booFound:
                 newID = len(lsOldID) + 1
+                self.compylog.info(f"Bed file ID {intID} now changed to ID {newID}")
                 lsOldID.append(newID)
                 dicID[intID] = newID
         return dicID
@@ -252,15 +310,13 @@ class CompToolMerge():
     
     
     
-    
+    ###Helper function to identify duplicate data
     def SortOutPresentSamples(self, table, dfNew, dfOld):
-        #lsIDNew = list(dfNew["ID"])
+        #Get data from every table
         lsNewMd5 = list(dfNew["Checksum"])
         lsOldMd5 = list(dfOld["Checksum"])
         lsNew = lsNewMd5[:]
         lsOld = lsOldMd5[:]
-        # print(dfNew)
-        # print(dfOld)
         if table == "BamInfo":
             lsNewRed = list(dfNew["Reduced"])
             lsOldRed = list(dfOld["Reduced"])
@@ -271,24 +327,29 @@ class CompToolMerge():
             lsNew = zip(lsNewMd5, lsNewRed, lsNewSub, lsNewFlag)
             lsOld = zip(lsOldMd5, lsOldRed, lsOldSub, lsOldFlag)
         
+        #Identify duplicates
         counter = 0
-        # print(table)
-        # print(lsNew)
-        # print(lsOld)
         for i in lsNew:
             if i in lsOld:
                 dfNew = dfNew.drop([counter])
                 if table == "BamInfo":
+                    self.compylog.info(f"Excluded file {self.dfBamI[counter].values} because duplicate")
                     self.dfBamI = self.dfBamI.drop([counter])
+                    
                 elif table == "VCFInfo":
+                    self.compylog.info(f"Excluded file {self.dfVI[counter].values} because duplicate")
                     self.dfVI = self.dfVI.drop([counter])
             counter += 1
+        
+        #Delete dublicates from every table
         self.DeleteDuplicates(table, dfNew)
         return dfNew
         
         
+        
+        
+    ###Helper tool to delete identified duplicates from every table
     def DeleteDuplicates(self, table, dfNew):
-        # print(dfNew)
         lsReducedIds = list(dfNew["ID"])
         if table == "BamInfo":
             COUNTER = 0
@@ -316,14 +377,13 @@ class CompToolMerge():
         
         
         
-        
+    ###Function to adjust bed IDs and file IDs in every table
     def AdjustDf(self, dicBedID, dicBamID, dicVcfID):
         for oldID in dicBedID.keys():
             col = "BedID"
             self.dfBedI[col] = self.dfBedI[col].where(
                 self.dfBedI[col] != oldID, dicBedID[oldID]
             )
-            # sys.exit()
             self.dfBF[col] = self.dfBF[col].where(
                 self.dfBF[col] != oldID, dicBedID[oldID]
             )
@@ -355,11 +415,10 @@ class CompToolMerge():
             self.dfE[col] = self.dfE[col].where(
                 self.dfE[col] != oldID, dicVcfID[oldID]
             )
-            # self.dfSO[col] = self.dfSO.where(self.dfSO[col] != oldID, dicVcfID[oldID])
     
     
     
- 
+    ###Function to merge adjusted data
     def UpdateDB(self, data, table):
         if len(data) == 0:
             pass
@@ -369,8 +428,7 @@ class CompToolMerge():
                     DBManager.InsertData(value, table, self.olddb)
             else:
                 DBManager.InsertData(data, table, self.olddb)
-        # if table == "BamInfo":
-            # pass
+
             
     
     
