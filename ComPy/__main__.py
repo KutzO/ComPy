@@ -50,18 +50,21 @@ def main():
     """
     COMPARE
     """
-    ##Needed arguments for comparison (main program)
+    #Needed arguments for comparison (main program)
     parse_compare = subparser.add_parser(
         "compare", help = ("Main program"),
     )
     parse_compare_sub = parse_compare.add_subparsers(help = ("Subcommands"))
     
-    #Tool to compare both .vcf and .bam files
+    ###
+    ##Tool to compare both .vcf and .bam files
     parse_compare_all = parse_compare_sub.add_parser(
         "all", help = ("Compares data from both .bam and .vcf files"), 
         add_help = False
     )
     parse_compare_all.set_defaults(tool="all")
+    
+    #Required
     group_all_req = parse_compare_all.add_argument_group("required")
     group_all_req.add_argument(
         "-b", "--bam", nargs = "*", help = ("Path to bam files"), 
@@ -79,9 +82,8 @@ def main():
         "-v", "--vcf", nargs = "*", help = ("Path to vcf data"), 
         required = True
     )
-
     
-    ###
+    #Optional
     group_all_opt = parse_compare_all.add_argument_group("optional")
     group_all_opt.add_argument(
         "-c", "--fileclass", type = str, default = False, 
@@ -93,12 +95,12 @@ def main():
     group_all_opt.add_argument(
         "-o", "--out", type = str, default = False, 
         help = (
-            "Output directory (default= current_working_directory)"
+            "Output directory (default= /home/{user}/ComPy/Results/)"
         )
     )
     group_all_opt.add_argument(
         "-t", "--threads", type = int, default=10, 
-        help = ("Number of threads used (default=10)")
+        help = ("Number of threads used (default= 10)")
     )
     group_all_opt.add_argument(
         "-d", "--reduce", action = "store_true", default = False, 
@@ -147,16 +149,18 @@ def main():
     group_all_opt.add_argument(
         "-u", "--flag", type = int, default = 772,
         help = (
-            "Exclude reads with any bit of the flag from analysis (default = 772)"
+            "Exclude reads from analysis showing any bit of the flag (default = 772)"
         )
     )
     
     ###
-    #Tool to compare .bam files only
+    ##Tool to compare .bam files only
     parse_compare_bam = parse_compare_sub.add_parser(
         "bam", help = ("Compares data from .bam files"), add_help = False
     )
     parse_compare_bam.set_defaults(tool = "bam")
+    
+    #Required
     group_bam_req = parse_compare_bam.add_argument_group("required")
     group_bam_req.add_argument(
         "-b", "--bam", nargs = "*", 
@@ -172,7 +176,7 @@ def main():
         required = True
     )
     
-    ###
+    #Optional
     group_bam_opt = parse_compare_bam.add_argument_group("optional")
     group_bam_opt.add_argument(
         "-h", "--help", action = "help", 
@@ -187,7 +191,7 @@ def main():
     )
     group_bam_opt.add_argument(
         "-o", "--out", type = str, default = False, 
-        help = ("Output directory (default= current_working_directory)")
+        help = ("Output directory (default= /home/{user}/ComPy/Results/)")
     )
     group_bam_opt.add_argument(
         "-t", "--threads", type = int, default=10, 
@@ -232,9 +236,8 @@ def main():
         )
     )
     
-    
-    ####
-    #Tool to compare .vcf data only
+    ###
+    ##Tool to compare .vcf data only
     parse_compare_vcf = parse_compare_sub.add_parser(
         "vcf", help = ("Compares data from .vcf files"), add_help = False
     )
@@ -265,11 +268,11 @@ def main():
     )
     group_vcf_opt.add_argument(
         "-o", "--out", type = str, default = False, 
-        help = ("Output directory (default= current_working_directory)")
+        help = ("Output directory (default = /home/{user}/ComPy/Results/)")
     )
     group_vcf_opt.add_argument(
         "-t", "--threads", type = int, default = 10, 
-        help = ("Number of threads used (default=10)")
+        help = ("Number of threads used (default = 10)")
     )
     group_vcf_opt.add_argument(
         "-p", "--db", type = str, default = False, 
@@ -296,56 +299,41 @@ def main():
     """
     EXTRACT
     """
-    ##Needed arguments for extracting data from database (sub program)
+    #Needed arguments for extracting data from database (sub program)
     parse_extract = subparser.add_parser(
         "extract", help = ("Convert database data to .xlsx")
     )
     parse_extract_sub = parse_extract.add_subparsers(help = ("Subcommands"))
-
-    #Tool to extract .xlsx
+    
+    ###
+    ##Tool to extract .xlsx
     parse_extract_data = parse_extract_sub.add_parser(
         "data", help = ("Extracts data from database in .xlsx format"), 
         add_help = False
     )
     parse_extract_data.set_defaults(tool = "data")
-        ###required
+    
+    
+    #Required
     group_data_req = parse_extract_data.add_argument_group(
         "Required! Either ids or namelist"
     )
     group_data_req.add_argument(
         "-b", "--bam", nargs = "*", type = str, default = False,
-        help = ("The .bam file ids to be deleted!")
+        help = ("The .bam file IDs to be deleted!")
     )
     group_data_req.add_argument(
         "-v", "--vcf", nargs = "*", type = str, default = False,
-        help = ("The .vcf file ids to be deleted!")
+        help = ("The .vcf file IDs to be deleted!")
     )
     group_data_req.add_argument(
         "-n", "--namelist", type = str, default = False,
         help = (
-            "A .csv file containing ids of data to be deleted. A default "
-            "list can be found in the ComPy test folder."
+            "A .csv file containing IDs of data to be deleted."
         )
     )
-    # group_data_req = parse_extract_data.add_argument_group("required")
-    # group_data_req.add_argument(
-    #     "-i", "--id", default = False, nargs = "*",
-    #     help = (
-    #         "The unique identifier given to the files of interest. It can be "
-    #         +"investigated by executing the EXTRACT INFO command and "
-    #         +"searching in the BamInfo or VCFinfo files."
-    #     )
-    # )
-    # group_data_req.add_argument(
-    #     "-l", "--list", default = False, 
-    #     help = (
-    #         "A table containing samples that should be extracted "
-    #         +"(has to be SAME as EXTRACT INFO table output)"
-    #     )
-    # )
     
-    
-    ###
+    #Optional
     group_data_opt = parse_extract_data.add_argument_group("optional")
     group_data_opt.add_argument(
         "-h", "--help", action = "help", 
@@ -355,19 +343,15 @@ def main():
         "-o", "--out", default = False, 
         help = (
             "Output path were .xlsx should be stored "
-            +"(default= current_working_directory)"
+            +"(default = /home/{user}/ComPy/Results/Extracted/)"
         )
     )
     group_data_opt.add_argument(
         "-p", "--db", default = False, 
         help = (
-            "Path to database (default= "
-            +"'current_working_directory/00_Database/Extraction.db')"
+            "Path to a database."
         )
     )
-   
-    
-    
     
     ###
     #Tool to extract .bed file targets
@@ -378,6 +362,8 @@ def main():
         add_help=False
     )
     parse_extract_bedrec.set_defaults(tool = "bedrec")
+    
+    #Required
     group_bedrec_req = parse_extract_bedrec.add_argument_group("required")
     group_bedrec_req.add_argument(
         "-b", "--bed", nargs = "*", 
@@ -387,7 +373,7 @@ def main():
         required = True
     )
     
-    ###
+    #Optional
     group_bedrec_opt = parse_extract_bedrec.add_argument_group("optional")
     group_bedrec_opt.add_argument(
         "-h", "--help", action = "help", 
@@ -397,19 +383,16 @@ def main():
         "-o", "--out", default = False, 
         help = (
             "Output path were recovered .bed file should be stored "
-            +"(default= current working directory)"
+            +"(default= /home/{user}/ComPy/Results/Extracted/)"
         )
     )
     group_bedrec_opt.add_argument(
         "-p", "--db", default = False, 
         help = (
-            "Path to the database (default= "
-            +"'current_working_directory/00_Database/Extraction.db')"
+            "Path to a database"
         )
     )
 
-    
-    
     ###
     #Tool to extract info .xlsx (all .bam and .vcf included in current database)
     parse_extract_info = parse_extract_sub.add_parser(
@@ -420,53 +403,57 @@ def main():
         )
     )
     parse_extract_info.set_defaults(tool = "info")
+    
+    #Optional
     parse_extract_info.add_argument(
         "-o", "--out", default = False, 
         help = (
             "Output path were .xlsx files should be stored "
-            +"(default= current working directory)"
+            +"(default= /home/{user}/ComPy/Results/Extracted/)"
         )
     )
     parse_extract_info.add_argument(
         "-p", "--db", default = False, 
         help = (
-            "Path to the database (default= "
-            +"'current_working_directory/00_Database/Extraction.db')"
+            "Path to a database"
         )
     )
-
-    #Tool to export database from hidden folder
+    
+    ###
+    ##Tool to export database from hidden folder
     parse_extract_database = parse_extract_sub.add_parser(
         "database", help = (
             "Exports database at current status towards a defined path!"
         )
     )
     parse_extract_database.set_defaults(tool = "database")
+    
+    #Required
     parse_extract_database.add_argument(
         "-o", "--out", default = False, 
         help = ("Output path for exporting database. REQUIRED!"), 
         required = True
     )
+    
+    #Optional
     parse_extract_database.add_argument(
         "-p", "--db", default = False, 
         help = (
-            "Path to the database (default= "
-            +"'current_working_directory/00_Database/Extraction.db')"
+            "Path to a database"
         )
     )
     
     """
     DELETE DATA
     """
-    
-    ##Needed arguments for delete data from database
+    #Needed arguments for delete data from database
     parse_delete = subparser.add_parser(
         "remove", help = "Delete data from database"
     )
     parse_delete_sub = parse_delete.add_subparsers(help = ("Subcommands"))
     
     ###
-    #Tool to clean data showing not comparable versions
+    ##Tool to clean data showing not comparable versions
     parse_clean = parse_delete_sub.add_parser(
         "clean", 
         help = (
@@ -475,15 +462,14 @@ def main():
         )
     )
     parse_clean.set_defaults(tool = "clean")
+    
+    #Optional
     parse_clean.add_argument(
         "-p", "--db", type = str, default = False, 
         help = (
-            "Path to the database (default= "
-            +"'current_working_directory/00_Database/Extraction.db')"
+            "Path to a database"
         )
     )
-    
-    
     
     ###
     #Tool to delete files
@@ -495,10 +481,8 @@ def main():
         add_help = False
     )
     parse_files.set_defaults(tool = "files")
-    # group_files_req = parse_files.add_argument_group(
-    #     "REQUIRED! Either id & datatype or NameList.csv"
-    # )
-    ###required
+
+    #Required
     group_files_req = parse_files.add_argument_group(
         "Required! Either ids or namelist"
     )
@@ -513,31 +497,11 @@ def main():
     group_files_req.add_argument(
         "-n", "--namelist", type = str, default = False,
         help = (
-            "A .csv file containing ids of data to be deleted. A default "
-            "list can be found in the ComPy test folder."
+            "A .csv file containing ids of data to be deleted."
         )
     )
-    # group_files_req.add_argument(
-    #     "-i", "--id", nargs = "*", default = False,
-    #     help = ("Unique ID given to saved file (see extract info table)")
-    # )
-    # group_files_req.add_argument(
-    #     "-t", "--type", type = str, default = False,
-    #     help = (
-    #         "Either bam (to delete bam file) or vcf (to delete vcf file)"
-    #     )
-    # )
-    # group_files_req.add_argument(
-    #     "-l", "--list", type = str, default = False,
-    #     help=(
-    #         "A .csv table exactly the same as produced by extract info! "
-    #         +"Containing all data that has to be deleted. If provided, no "
-    #         +"more information about the data has to be provided!"
-    #     )
-    # )
     
-    
-    ###
+    #Optional
     group_files_opt = parse_files.add_argument_group("optional")
     group_files_opt.add_argument(
         "-h", "--help", action = "help", 
@@ -546,22 +510,21 @@ def main():
     group_files_opt.add_argument(
         "-p", "--db", default = False, 
         help = (
-            "Path to the database (default= "
-            +"'current_working_directory/00_Database/Extraction.db')"
+            "Path to a database"
         )
     )
-
 
     """
     PLOT data
     """
+    ###
+    #Tool to plot saved data 
     group_plot = subparser.add_parser(
         "plot", help = "Plot data from database", add_help = False
     )
-    
     group_plot.set_defaults(tool = "plot")
     
-    ###required
+    #Required
     group_plot_req = group_plot.add_argument_group(
         "Required! Either ids or namelist"
     )
@@ -576,22 +539,21 @@ def main():
     group_plot_req.add_argument(
         "-n", "--namelist", type = str, default = False,
         help = (
-            "A .csv file containing ids of data to be plotted. A default "
-            "list can be found in the ComPy test folder."
+            "A .csv file containing ids of data to be plotted."
         )
     )
     
-    ###optional
+    #Optional
     group_plot_opt = group_plot.add_argument_group(
         "Optional"    
     )
     group_plot_opt.add_argument(
         "-o", "--out", default = False, type = str,
-        help = ("Define output path to store files at")
+        help = ("Define output path to store files at. (Default = /home/{user}/ComPy/Results/")
     )
     group_plot_opt.add_argument(
         "-db", "--database", default = False, type = str,
-        help = ("Define path to database, if not stored at default!")
+        help = ("Define path to database if not stored at default!")
     )
     group_plot_opt.add_argument(
         "-t", "--threads", default = 10, type = int, 
@@ -614,16 +576,18 @@ def main():
         help = ("If different classes should be included in one plot.")
     )
     
-    
     """
     MERGE data
     """
+    ###
+    ##Tool to merge two databases
     group_merge = subparser.add_parser(
         "merge", help = ("Extend existing database with external data"),
         add_help = False
     )
     group_merge.set_defaults(tool = "merge")
-    ###requiered
+    
+    #Requiered
     group_merge_req = group_merge.add_argument_group(
         "Required! Either another db or files (.xlsx and .bed)"
     )
@@ -639,9 +603,10 @@ def main():
     )
     group_merge_req.add_argument(
         "-b", "--bed", nargs = "*", default = False,
-        help = ("Path to bed file")
+        help = ("Path to bed file (.xlsx)")
     )
-    ###optional
+    
+    #Optional
     group_merge_opt = group_merge.add_argument_group(
         "Optional"    
     )
@@ -653,8 +618,6 @@ def main():
         "-h", "--help", action = "help", 
         help = ("show this help message and exit")
     )
-    
-    
     
     """
     PARSE ALL ARGS
@@ -689,6 +652,7 @@ def main():
         os.makedirs(
             f"/home/{getpass.getuser()}/ComPy/logs/"
         )
+    
     #Delete Folder if >100 logs
     pathlogfiles = glob(f"/home/{getpass.getuser()}/ComPy/logs/*")
     if len(pathlogfiles) > 100:
@@ -717,6 +681,7 @@ def main():
      
     ###The main program to extract data from .bam / .vcf files and compare them 
     if args.tool == "all":
+        compylog.info("Compare all")
         CompToolCompare(
             "all", argBamfiles = args.bam, argVcffiles = args.vcf, 
             argBedfile = args.bed, argReference = args.ref, 
@@ -729,6 +694,7 @@ def main():
             argClass = args.fileclass, argyaml = args.yaml, argflag = args.flag
         )
     if args.tool == "bam":
+        compylog.info("Compare bam")
         CompToolCompare(
             "bam", argBamfiles = args.bam, argBedfile = args.bed, 
             argReference = args.ref, argOutput = args.out, 
@@ -740,6 +706,7 @@ def main():
             argyaml = args.yaml, argflag = args.flag
         )
     if args.tool == "vcf":
+        compylog.info("Compare vcf")
         CompToolCompare(
             "vcf", argVcffiles = args.vcf, argOutput = args.out, 
             argDatabase = args.db, argThreads = args.threads, dtime = dtime, 
@@ -750,9 +717,9 @@ def main():
         )
 
     ###The program to extract data from an existing database
-    
     #To extract data from database:
     if args.tool == "data":
+        compylog.info("Extract data")
         CompToolExtract(
             args.tool, argDatabase = args.db, dtime = dtime, 
             argOutput = args.out, strVersion = strVersion, 
@@ -761,6 +728,7 @@ def main():
     
     #To recover .bed file targets
     if args.tool == "bedrec":
+        compylog.info("Extract bedfiles")
         CompToolExtract(
             args.tool, argDatabase = args.db, argBedfile = args.bed, 
             argOutput = args.out, dtime = dtime
@@ -768,6 +736,7 @@ def main():
     
     #To extract info files
     if args.tool == "info":
+        compylog.info("Extract info")
         CompToolExtract(
             args.tool, argDatabase =  args.db, argOutput = args.out, 
             dtime = dtime
@@ -775,6 +744,7 @@ def main():
     
     #To export database
     if args.tool == "database":
+        compylog.info("Extract database")
         CompToolExtract(
             args.tool, argOutput = args.out, dtime = dtime, 
             argDatabase = args.db
@@ -785,19 +755,22 @@ def main():
     
     ###The program to delete data from an existing database
     if args.tool == "files":
+        compylog.info("Remove data")
         CompToolDelete(
             args.tool, argbamid = args.bam, argvcfid = args.vcf,  
             argDatabase = args.db, dtime= dtime, argNameTable = args.namelist
         )
         
     if args.tool == "clean":
+        compylog.info("Clean database")
         CompToolDelete(
             args.tool, argDatabase = args.db, dtime = dtime, 
             lsCompatibleVersions = lsCompatibleVersions
         )
     
-    
+    ###The program to plot data again
     if args.tool == "plot":
+        compylog.info("Plot data")
         CompToolPlot(
             argbamid = args.bam, argvcfid = args.vcf, 
             argnamelist = args.namelist, argoutput = args.out, 
@@ -807,7 +780,9 @@ def main():
             argclass = args.fileclasses
         )
     
+    ###The program to merge databases
     if args.tool == "merge":
+        compylog.info("Merge databases")
         CompToolMerge(
             argxlsx = args.xlsx, argnewdb = args.database, argolddb = args.db,
             argbed = args.bed
