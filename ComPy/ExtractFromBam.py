@@ -32,6 +32,7 @@ class ExtractInfoData():
         self.pathDB = pathDB                                                   
         self.subsample = subsample                                             
         self.dtime = dtime
+        self.flag = flag
         if reducedBed:                                                         
             self.strReduce = 1
         else:
