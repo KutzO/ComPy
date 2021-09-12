@@ -554,7 +554,7 @@ class ExtractInfoData():
                 lsSDE = [tmpSDE,zipline[-1]]
             except Exception as e:
                 self.compylog.error(f"{self.bamname}: tmpMean: {tmpMean}")
-                self.compylog.error(e)
+                self.compylog.exception(e)
                 self.compylog.error(
                     f"{self.bamname}: Sum: "
                     +f"{sum([(x - tmpMean)**2 for x in values])}"
