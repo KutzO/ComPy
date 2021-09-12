@@ -13,25 +13,26 @@ import numpy as np
 
 """
 Class for extracting all data from given .bam files
-
 """
 class ExtractInfoData():
     def __init__(self, bam, bamname, ref, threads, dictargets, bedid,
                  pathDB, subsample, version, lsCompatibleVersions, 
                  reducedBed, intID, FileClass, dtime, flag):
-        self.version = version                                                 #Current version
+        
+        ###Define global variables
+        self.version = version                                                 
         self.lsVersions = lsCompatibleVersions
         self.ID = intID
-        self.bam = bam                                                         #.bam file path
-        self.ref = ref                                                         #.fasta reference file
+        self.bam = bam                                                         
+        self.ref = ref                                                         
         self.threads = threads                      
-        self.dicTargets = dictargets                                           #Dictionary with all targets from .bed file (created in script Preparation.py)
-        self.bamname = bamname                                                 #Name of the .bam file
-        self.bedid = bedid                                                     #The .bed ID (calculated in script Preparation.py)
-        self.pathDB = pathDB                                                   #Path to database
-        self.subsample = subsample                                             #Number of subsamples taken from every target (default = 100_000)
+        self.dicTargets = dictargets                                           
+        self.bamname = bamname                                                 
+        self.bedid = bedid                                                     
+        self.pathDB = pathDB                                                   
+        self.subsample = subsample                                             
         self.dtime = dtime
-        if reducedBed:                                                         #Define if .bed is reduced (important for data management)
+        if reducedBed:                                                         
             self.strReduce = 1
         else:
             self.strReduce = 0
@@ -41,6 +42,7 @@ class ExtractInfoData():
         else:
             self.FileClass = "Default"
         
+        ###Prepare FLAG infos
         self.dicHexa = {
             1   :   1,
             2   :   2,
@@ -71,19 +73,20 @@ class ExtractInfoData():
             800: self.suply,
         }
         
-        #Initiale logging tool
+        ###Initiale logging tool
         self.compylog = logging.getLogger("ComPy")
         
-        self.compylog.info("Getting number of reads per chromosome")
+        ###Get read numbers
         self.GetReadNumbers()
+        
+        ###Get used Flag filters
         self.FlagFilter = self.GetFlags(flag)
-        #self.test = test
             
         
 
     ###Extract information about mapped reads, unmapped reads and total number of reads (per chromosome)
     def GetReadNumbers(self):
-        ##Building up dataframe with information according to every chromosome in .bed file
+        self.compylog.info("Getting number of reads per chromosome")
         lsDF = []
         with pysam.AlignmentFile(self.bam, "rb") as bamfile:
             for chromosome in self.dicTargets.keys():
@@ -104,20 +107,23 @@ class ExtractInfoData():
                     mapped, unmapped]
                 )
        
-        #Transfer the dictionary to a dataframe
+        #Transfer the dictionary to a dataframe and save to table "ReadMapping"
+        self.compylog.info("Saving read numbers to table ReadMapping")
         columnnames = [
             "BAM", "ID", "Chrom", "Total", "Mapped", "Unmapped"
         ]
         dfSave = pd.DataFrame(lsDF,columns = columnnames)
-        #Adding information about mapped reads to database
         DBManager.InsertData(dfSave.values,"ReadMapping",self.pathDB)
+        self.compylog.info("Done extracting read numbers!")
 
     
     
     
     
-    ###Function to determine number of reads taken from every target to reach the number of subsamples per chromosome (default = 100_000)
+    ###Function to determine number of reads taken from every target to reach the number of subsamples per chromosome
     def CalcSubsamplesPerTarget(self):
+        self.compylog.info(f"Calculate subsamples ({self.subsample} per target")
+        self.compylog.info(f"Reduced .bed file targets: {self.strReduce}")
         dicSubsamples = {}
         num_targets = [len(self.dicTargets[x]) for x in self.dicTargets.keys()]
         num_targets = sum(num_targets)
@@ -151,37 +157,41 @@ class ExtractInfoData():
                                         )
                 self.compylog.exception(e)
         
-        
         for chromo in self.dicTargets.keys():
             dicSubsamples[chromo] = trgsizenorm[:len(self.dicTargets[chromo])]
             trgsizenorm = trgsizenorm[len(self.dicTargets[chromo]):]       
-
+        self.compylog.info("Done calculating subsamples per target")
         return dicSubsamples
         
         
-        
+    ###Function to translate given flag to flag filter functions
     def GetFlags(self, number):
-    lsFunc = []
-    while True:
-        lsHexa = list(self.dicHexa.keys())
-        for i in range(0, len(lsHexa)):
-            value = lsHexa[i]
-            if value > number:
-                number -= lsHexa[i-1]
-                #print(number)
-                lsFunc.append((self.dicHexa[lsHexa[i-1]]))
+        self.compylog.info("Define flag filter functions")
+        lsFunc = []
+        while True:
+            lsHexa = list(self.dicHexa.keys())
+            for i in range(0, len(lsHexa)):
+                value = lsHexa[i]
+                if value > number:
+                    number -= lsHexa[i-1]
+                    lsFunc.append((self.dicHexa[lsHexa[i-1]]))
+                    break
+            if number > max(lsHexa):
+                number -= max(lsHexa)
+                lsFunc.append(self.dicHexa[max(lsHexa)])
+            if number == 0:
                 break
-        if number > max(lsHexa):
-            number -= max(lsHexa)
-            lsFunc.append(self.dicHexa[max(lsHexa)])
-        if number == 0:
-            #print(True)
-            break
-    lsFunc = list(set(lsFunc))
-    lsFunc.sort()
-    return lsFunc
+        lsFunc = list(set(lsFunc))
+        lsFunc.sort()
+        self.compylog.info("Done filtering flags!")
+        self.compylog.info(
+            f"Flag: {self.flag} means filter {lsFunc}"
+        )
+        return lsFunc
 
-
+    """
+    Helper functions to filter flags
+    """
     def unmapp(self, read):
         if read.is_unmapped:
             return True
@@ -230,13 +240,11 @@ class ExtractInfoData():
         else:
             return False
 
-
     def secundary(self, read):
         if read.is_secondary:
             return True
         else:
             return False
-
 
     def qcfail(self, read):
         if read.is_qcfail:
@@ -255,7 +263,7 @@ class ExtractInfoData():
             return True
         else:
             return False    
-        
+    
     """
     The main extraction function.
     It manages the multiprocessing driven extraction and returns finished lists!
@@ -271,33 +279,21 @@ class ExtractInfoData():
             Dictionary containing read length distribution of read mate 1
         dictLenRev
             Same as dictLenFwd but for read mate 2
-    Following functions are called:
-            GetReadStatistics(), can be found in the same class
-            CalcPHRED(), can be found in the same class
     """  
     def ExtractQCdata(self):
-    
+        self.compylog.info("Extract QC data")
     
         ##Calculate number of collected reads per target (see function above)
         subsamples = self.CalcSubsamplesPerTarget()
         
-        #Define empty output variables (explanation see above this function)
+        #Define empty output variables
         lsResultPhred = []
         lsResultOri = []
         dictLenFwd = {}
         dictLenRev = {}
         
-        #Logging extraction parameters 
-        self.compylog.info(f"Reduced .bed file targets: {self.strReduce}")
-        self.compylog.info("Number of read samples per chromosome for "
-                              +f"QC: {self.subsample}"
-        )
-        
-        
         ##Start extraction  
         pool = multiprocessing.Pool(processes = self.threads)
-           
-        #Define multiprocessing to extract read statistics + QC data with function GetReadStatistics()
         lsJobs = [pool.apply_async(self.GetReadStatistics, 
                                    args = (
                                        self.dicTargets[chromosom], 
@@ -307,10 +303,8 @@ class ExtractInfoData():
                    ) \
                   for chromosom in self.dicTargets.keys()
         ]
-        
-        
-        
         print(f"File: {self.bamname}")
+        self.compylog.info(f"File: {self.bamname}")
         for job in tqdm(lsJobs):
             RowAdd = []
             chromosom, targets, lsTotal, lsOnTrg, lsmeanc, gc, lsPHRED, \
@@ -323,6 +317,8 @@ class ExtractInfoData():
                                  str(data[1]), str(data[2]), str(data[3]), 
                                  str(data[4])]
                 )
+            
+            #Create big list with ALL extracted QC scores
             tmpPHRED = [y[:] for y in lsPHRED]
             tmpOri = [x[:] for x in lsOrientation]
             for data in zip(tmpPHRED, tmpOri):
@@ -338,44 +334,17 @@ class ExtractInfoData():
                     dictLenRev[keyname] += dLenRev[keyname]
                 else:
                     dictLenRev[keyname] = dLenRev[keyname]
-                    
-                    
+                            
             #Insert data in table "ReadStatistik"
             DBManager.InsertData(RowAdd,"ReadStatistiks",self.pathDB)
             
-            #Add information steppwise to db to avoid large lists/dicts
+            #Delete variables to save storage
             del RowAdd
             del tmpPHRED
             del tmpOri
             del lsPHRED
             del lsOrientation
-            
-        
-        
-    
-        pool.close()
-                      #Make sure to lower needed RAM                
-        
-        
-        ##Calculate length distribution and normalize it (max 1 --> 100% of the reads showing the corresponding length)
-        # allreadsFwd = sum(dictLenFwd.values())
-        # self.compylog.info(
-            # "\n Calculating read length distribution from a number of"
-            # +f" {allreadsFwd} reads flagged as mate 1!"
-        # )
-        # print("Calculating read length distribution")
-        # for keys in tqdm(dictLenFwd.keys()):
-            # dictLenFwd[keys] = dictLenFwd[keys]/allreadsFwd                    #Normalize the data
-        # self.compylog.info("Done \n")
-        # allreadsRev = sum(dictLenRev.values())
-        # self.compylog.info(
-            # "\n Calculating read length distribution from a number of "
-            # +f"{allreadsRev} reads flagged as mate 2!"
-        # )
-        # for keys in tqdm(dictLenRev.keys()):
-            # dictLenRev[keys] = dictLenRev[keys]/allreadsRev                    #Normalize the data
-        # self.compylog.info("Done \n")
-        
+        pool.close()   
         
         ##Calculate PHRED scores
         self.compylog.info("Calculating mean PHRED scores!")
@@ -402,7 +371,7 @@ class ExtractInfoData():
         jobs = [
             pool.apply_async(self.CalcPHRED, args=(Phredrow,)) \
             for Phredrow in zippedphredfwd
-        ]                                                                      #only read mate 1
+        ]                                                                     
         lsMeanFWD = []
         lsSDEfwd = []
         lsMeanREV = []
@@ -419,7 +388,7 @@ class ExtractInfoData():
         jobs = [
             pool.apply_async(self.CalcPHRED, args=(Phredrow,)) \
             for Phredrow in zippedphredrev
-        ]                                                                      #only read mate 2
+        ]                                                                      
         for _ in tqdm(jobs):
             PhMean, PhSD, = _.get()
             if len(PhMean) > 1 and len(PhSD) > 1:
@@ -433,7 +402,7 @@ class ExtractInfoData():
         lsMeanREV.sort(key= lambda x: x[1])
         lsSDErev.sort(key = lambda x: x[1])
 
-        self.compylog.info("Done! \n")
+        self.compylog.info("Done Extracting data!")
         return lsMeanFWD, lsSDEfwd, lsMeanREV,lsSDErev, dictLenFwd, dictLenRev
 
 
@@ -441,21 +410,16 @@ class ExtractInfoData():
 
 
     ###Subprocess to extract needed information from reads
-    #Called by ExtractQCdata()
-    #Code for GC, threeNucs, hetRet, hetero and meanC made by Dr. rer. nat. Stephan Holger Drukewitz
-    #def GetReadStatistics(self, target, chromosom, subsamples, bamfetchtarget):
     def GetReadStatistics(self, targets, chromosom, subsampless):
-        
-        gc = []
+
         ##GC content
-        # if self.test:
-            
+        gc = []
         with pysam.FastaFile(self.ref) as fasta:
             for target in targets: 
                 seq=fasta.fetch(chromosom,start=target[0]-1, end=target[1]) 
                 gc.append(len([x for x in seq if x=='G' or x=='C' ])/len(seq))
         
-        ##QC metrics (PHRED)
+        ##QC metrics (PHRED / LEN) & Coverage
         lsTargets = []
         lsTotal = []
         lsOnTrg = []
@@ -467,19 +431,11 @@ class ExtractInfoData():
         with pysam.AlignmentFile(self.bam,"rb") as bamfile:
             for target, subsamples in zip(targets, subsampless):
                 lsTargets.append(target)
-                #Check total number of reads
-                
-                
                 lsFetchBam = list(
                     bamfile.fetch(
                         chromosom, start=target[0]-1,end=target[1]
                     )
                 )
-                # meanc = np.mean(bamfile.count_coverage(chromosom, start=target[0]-1,end=target[1]))
-                """
-                Iteration durch readklassen und nur mit wichtigen Infos in dataframe
-                    --> Aus DF dann random samples ziehen
-                """
                 
                 total_num_reads = len(lsFetchBam)
                 
@@ -500,7 +456,6 @@ class ExtractInfoData():
                 lsRandom.append(0)  #To go on after collecting the last read!
                 
                 #Start extraction by iterating through all reads 
-                
                 lsReadPhred = []
                 lsReadOri = []
                 lsCovLen = []
@@ -509,8 +464,6 @@ class ExtractInfoData():
                 countmatch = 0
                 OnTrg = 0
                 Total = 0
-                # lsRange = [0 for x in range(target[0], target[1])]
-                # lsCov = []
                 for read in lsFetchBam:
                     #Pick rnd reads and determine wether the read is mate 1 ("fwd") or mate 2 ("rev")
                     if len(lsRandom) > 1:
@@ -539,7 +492,7 @@ class ExtractInfoData():
 
                     countreads += 1             #Increase the readcounter
                     
-                    #Identify total number of reads and reads which mapped on target
+                    #Identify total number of reads and reads passed flag filter and get coverage data
                     Total += 1
                     lsFlagCheck = []
                     for i in self.FlagFilter:
@@ -547,16 +500,6 @@ class ExtractInfoData():
                     if True in lsFlagCheck:
                         pass
                     else:
-                    # if read.is_unmapped:
-                        # pass
-                    # else:
-                        # lsAdd = lsRange[:]
-                        # lsAdd[read.qstart] = 1
-                        # try:
-                            # lsAdd[read.qend] = -1
-                        # except:
-                            # pass
-                        # lsCov.append(lsAdd)
                         OnTrg += 1
                         if read.qname not in dicNames.keys():
                             dicNames[read.qname] = [read.query_alignment_start, read.query_alignment_end]
@@ -567,68 +510,21 @@ class ExtractInfoData():
                                 dicNames[read.qname][1] = realend
                             else:
                                 dicNames[read.qname][1] = dicNames[read.qname][1] + read.query_alignment_length
-                        # lsCovLen.append(read.query_alignment_length)
-                # arrCov = np.array(lsCov)
-                # lsSum = np.sum(arrCov, axis = 0)
-                #print(lsSum)
-                # try:
-                    # intAdd = 0
-                    # counter = 0
-                    # for _ in lsSum:
-                        # lsSum[counter] = lsSum[counter] + intAdd
-                        # intAdd = _
-                        # counter += 1
-                    # cov = statistics.mean(lsSum)
-                    
-                #print(lsSum)
-                # try:
-                    # cov = statistics.mean(lsSum)
-                    
-                # if type(lsSum) == np.float64:
-                    # if lsSum == 0:
-                     # cov = 0
-                # except:
-                    # lsSum == 0
-                    # cov = 0
-                #except Exception as e:
-                #    print(lsSum)
-                    #raise SystemError(e)
-                # lsmeanc.append(cov)
                 
+                #Collect data
                 lsTotal.append(Total)
                 lsOnTrg.append(OnTrg)
                 lsTargets.append(target)
                 arlsReadPhred.append(lsReadPhred)
                 arlsReadOri.append(lsReadOri)
-
-                # lsLenTotal = []
-                # for length in dicReadLenFwd.keys():
-                    # lsLenTotal += [
-                        # length for x in range(dicReadLenFwd[length])
-                    # ]
-                # try:
-                    # mReadLFwd = sum(lsLenTotal)/len(lsLenTotal)
-                # except:
-                    # self.compylog.info(f"No reads found at target: {target}")
-                    # mReadLFwd = 0
-                # lsLenTotal = []
-                # for length in dicReadLenRev.keys():
-                    # lsLenTotal += [
-                        # length for x in range(dicReadLenRev[length])
-                    # ]
                 
-                
-                # try:
-                    # mReadLRev = sum(lsLenTotal)/len(lsLenTotal)
-                # except:
-                    # mReadLRev = 0
-                # meanc = OnTrg *((mReadLFwd + mReadLRev) / 2) \
-                        # / abs(target[0] - target[1])
+                #Calculate coverage
                 if OnTrg != 0:
-                    # meanc = OnTrg * statistics.mean(lsCovLen) \
-                             # / abs(target[0] - target[1])
-                    meanc = sum([x[1] - x[0] for x in dicNames.values()]) / abs(target[1] - target[2])
+                    meanc = sum([x[1] - x[0] for x in dicNames.values()]) / abs(target[0] - target[1])
                 else:
+                    self.compylog.info(
+                        f"No reads found! {chromosom}, {target}"
+                    )
                     meanc = 0
                 lsmeanc.append(meanc)
 
@@ -640,28 +536,30 @@ class ExtractInfoData():
         
                 
     ###Subprocess to calculate mean PHRED and standard derivation
-    #Called by ExtractQCdata()
     def CalcPHRED(self, zipline):
+        
+        #Extract QC results without read position
         values = [int(x) for x in zipline[:-1] if x != None]
         if len(values) > 1:
             try:
-                tmpMean = statistics.mean(values)                                           #Calculate mean
+                #Calculate mean and standard derivation of PHRED scores
+                tmpMean = statistics.mean(values)                                           
                 tmpSDE = math.sqrt(sum(
                                     [(x - tmpMean)**2 for x in values]
                                     ) / (len(values)-1)
-                )                                                              #Calculate standard derivation
+                )            
+                
                 #Add result and position in read
                 lsMean = [tmpMean,zipline[-1]]                                              
                 lsSDE = [tmpSDE,zipline[-1]]
             except Exception as e:
-                #print(values)
-                print(f"{self.bamname}: tmpMean: {tmpMean}")
-                print(e)
-                print(
+                self.compylog.error(f"{self.bamname}: tmpMean: {tmpMean}")
+                self.compylog.error(e)
+                self.compylog.error(
                     f"{self.bamname}: Sum: "
                     +f"{sum([(x - tmpMean)**2 for x in values])}"
                 )
-                print(f"{self.bamname}: Len: {len(values)-1}")
+                self.compylog.error(f"{self.bamname}: Len: {len(values)-1}")
                 sys.exit()
                 
         else:
@@ -674,7 +572,6 @@ class ExtractInfoData():
 
 
     ###Save QC information and information about mapped reads
-    #Called by main program (ComPy.py)
     def SavePhredLen(self, lsMeanPhredFwd, lsStdDevPhredFwd,lsMeanPhredRev, 
                      lsStdDevPhredRev, dicReadLenFwd, dicReadLenRev):   
         
