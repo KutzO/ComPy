@@ -30,12 +30,14 @@ def CompToolPlot(**kwargs):
     """
     1) Get database path
     """
+    compylog.info("Prepare database")
     classDataBase = DBManager(kwargs["argDatabase"])    
     
 
     """
     2) Prepare data
     """
+    compylog.info("Prepare arguments")
     classPrep = DataPreparation(
         "plot", lsbamid = kwargs["argbamid"], lsvcfid = kwargs["argvcfid"],
         booDB = classDataBase.booDB, styleyaml = kwargs["argyaml"],
@@ -46,8 +48,7 @@ def CompToolPlot(**kwargs):
     """
     3) Plot data
     """
-    
-    #Class is defined in script PlotData.py
+    compylog.info("Plot data")
     print("Create sample comparison")
     PlotClass = PlotTheData(
             "plot", classPrep.outputpathTmp, classPrep.outputpath, 
@@ -57,13 +58,12 @@ def CompToolPlot(**kwargs):
     )
     PlotClass.MergeAllPlots(kwargs["dtime"])
 
-    
-    
     print("Start individual comparison")
     if kwargs["argbamid"]:
         PlotCompAll(
             classDataBase.pathDB, kwargs["dtime"], classPrep.outputpath, 
-            kwargs["argThreads"], classPrep.dicIDs, classPrep.styleyaml
+            kwargs["argThreads"], classPrep.dicIDs, classPrep.styleyaml,
+            fileclasses = kwargs["argclass"]
         )
     else:
         print("No bam files provided.. skipping")
