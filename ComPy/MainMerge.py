@@ -114,12 +114,12 @@ class CompToolMerge():
         for table in lsAllTables:
             if table not in lsGivenNames:
                 lsLost.append(table)
-                compylog.error(f"Table {table} was not found")
+                self.compylog.error(f"Table {table} was not found")
         if len(lsLost) > 0:
             print(f"Following tables are missing: {lsLost}. Please provide!")
             sys.exit()
         else:
-            compylog.info("All tables were found. Start merging....")
+            self.compylog.info("All tables were found. Start merging....")
             return lsAllPathExcel, pathBed      
 
 
