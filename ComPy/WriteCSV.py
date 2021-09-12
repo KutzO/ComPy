@@ -11,8 +11,10 @@ import logging
 class WriteCSV():
     def __init__(self, outputpath, pathDB, dtime, bamID = False, 
                  vcfID = False, fileclass = False, bedid = False):
-        self.pathDB = pathDB                                     #Path to database
-        self.out = self.FindOutputPath(outputpath, dtime)        #Path were .xlsx should be stored
+                 
+        #Define global variables
+        self.pathDB = pathDB                                     
+        self.out = self.FindOutputPath(outputpath, dtime)        
         self.bamID = bamID
         self.vcfID = vcfID
         self.fileclass = fileclass
@@ -23,7 +25,7 @@ class WriteCSV():
 
 
     
-    ###Define result output
+    ###Helper function to define result output
     def FindOutputPath(self, givenpath, dtime):
         if givenpath:
             if givenpath[:2] == ".." or givenpath[:2] == "./":
@@ -49,12 +51,9 @@ class WriteCSV():
 
     
     ###Main function for converting database to .xlsx
-    #Is separately called by ComPy.py 
-    #Table name has to be provided by calling the function
     def WriteData(self, keytable): 
         
-        ##Collect data and table header
-        #See script DbManager.py for more information
+        #Collect data and table header
         if keytable in ["BamInfo", "VCFInfo", "BedInfo"]:
             data = DBManager.ExtractData(
                 keytable, self.pathDB, ID = False, ALL = True
@@ -76,7 +75,7 @@ class WriteCSV():
             names = data.columns
             data = data.values
         
-        ##If needed data can not be found in database
+        #If needed data can not be found in database
         if len(data) == 0:
             if keytable == "VCFInfo" or keytable == "BamInfo":
                 self.compylog.warning(
@@ -114,11 +113,13 @@ class WriteCSV():
     
     ###Function to write new .bed file (saved as tab separated .bed file)
     def RecoverBED(self):
+        
+        #Get bedfile targets
         targets = DBManager.ExtractData(
             "Bedfiles", self.pathDB, bedid = self.bedid
         )
-        #print(targets)
-        #sys.exit()
+        
+        #Save bedfile as .bed
         with open(
                 self.out + f"RecoveredBedID_{self.bedid}.bed","w"
                   ) as bedfile:
@@ -133,16 +134,11 @@ class WriteCSV():
             f"{self.out}"
         )
         
-        
-        # with open(
-                # self.out + f"RecoveredBedID_{self.bedid}.xlsx","w"
-                  # ) as bedfile:
+        #Save bedfile as .xlsx
         pathExcel = self.out + f"RecoveredBedID_{self.bedid}.xlsx"
         dfBedFile = DBManager.ExtractData(
         "Bedfiles", self.pathDB, bedid = self.bedid, df = True
         )
-        # print(dfBedFile)
-        ##Create .xlsx file
         workbook = xlsxwriter.Workbook(pathExcel)
         worksheet = workbook.add_worksheet("Targets")
         
