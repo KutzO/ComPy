@@ -42,13 +42,14 @@ def CompToolDelete(tool, **kwargs):
         """
         1) Get database path
         """
-        classDataBase = DBManager(kwargs["argDatabase"])                        #Class defined in script DBManager.py
+        compylog.info("Prepare Database")
+        classDataBase = DBManager(kwargs["argDatabase"])                        
 
         
         """
         2) Clean database
         """
-        #Function defined in script DBManager.py
+        compylog.info("Clean Database")
         DBManager.DelData(
             dbpath = classDataBase.pathDB, booClean = True, 
             lsCompVers = kwargs["lsCompatibleVersions"]
@@ -56,8 +57,6 @@ def CompToolDelete(tool, **kwargs):
     
 
 
-
-    
     ###Delete files from database
     if tool=="files":
         """
@@ -70,13 +69,14 @@ def CompToolDelete(tool, **kwargs):
         """
         1) Get database path
         """
-        classDataBase = DBManager(kwargs["argDatabase"])                        #Class defined in script DBManager.py
+        compylog.info("Prepare Database")
+        classDataBase = DBManager(kwargs["argDatabase"])                        
 
         
         """
         2) Prepare data
         """
-        #Class defined in script Preparation.py
+        compylog.info("Prepare input arguments")
         classPrep = DataPreparation(
             "delete", lsbamid = kwargs["argbamid"], 
             lsvcfid = kwargs["argvcfid"],  booDB = classDataBase.booDB, 
@@ -87,7 +87,7 @@ def CompToolDelete(tool, **kwargs):
         """
         3) Delete data
         """
-        #Funktion defined in script DBManager.py
+        compylog.info("Delete files from Database")
         DBManager.DelData(
             dbpath = classDataBase.pathDB, 
             bamID = classPrep.dicIDs["bam"], 
