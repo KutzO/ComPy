@@ -333,11 +333,11 @@ class CompToolMerge():
             if i in lsOld:
                 dfNew = dfNew.drop([counter])
                 if table == "BamInfo":
-                    self.compylog.info(f"Excluded file {self.dfBamI[counter].values} because duplicate")
+                    self.compylog.info(f"Excluded file {self.dfBamI.values[counter]} because duplicate")
                     self.dfBamI = self.dfBamI.drop([counter])
                     
                 elif table == "VCFInfo":
-                    self.compylog.info(f"Excluded file {self.dfVI[counter].values} because duplicate")
+                    self.compylog.info(f"Excluded file {self.dfVI.values[counter]} because duplicate")
                     self.dfVI = self.dfVI.drop([counter])
             counter += 1
         
