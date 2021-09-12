@@ -13,45 +13,37 @@ The database consists of following tables:
     - ReadStatistiks
         Includes various information about read per target
             e.g. read on target, mean coverage, g-c content
-        You may have a look at the function ExtractQCdata() in the class ExtractInfoData() in the script ExtractFromBam.py for more information
         
     - ReadMapping   
         Includes information about mapped/unmapped reads per chromosome
        
     - QCmetrics
         Includes mean PHRED score per base, the corresponding standard derivation, length distribution and read orientation
-            see class ExtractInfoData() in script ExtractFromBam.py
             
     - BamInfo 
-        Includes information about bamname, bedid, version of db for each added bamfile
-            is needed as checkup if bamfile was already added and which bedfile was associated
+        Includes information about e.g bamname, bedid, version of db for each added bamfile
             
     - Extracted_Variants
-        Includes information about each variant in the passed .vcf files
+        Includes information about each variant in provided .vcf files
             e.g. position, reference, variant, allelefrequency
-            
-    - Sorted_out
-        Includes Variants from .vcf files causing problems at allelefrequency calculation
-            - variants included in this table are NOT plotted or analysed by the program!
-        See function HelpExtract() of class ExtractFromVCF() defined in script ExtractFromVCF.py for more information
     
     - VCFinfo
-        Same as BamInfo but for passed .vcf files
+        Same as BamInfo but for .vcf files
     
     - Bedfiles
-        Important to calculate bed file ID number. Is used at Preparation (see function CheckBed() in class DataPreparaion() defined in script Preparation.py  
+        Stores bed file targets. 
 """
 class DBManager():
     def __init__(self, DBpath=False):
-        ###Check path to given database and if a database is available
-        
+    
         #Initiale logging tool
         self.compylog = logging.getLogger("ComPy")
         
-        #Checks database
+        #Check database path
         self.pathDB, self.booDB = self.FindDatabase(DBpath)
         if not self.booDB:
-            self.CreateDB()                         #If no database can be detected by FindDatabase() a new one will be created
+            self.compylog.info("A new database will be created!")
+            self.CreateDB()                         
         if self.booDB:
             self.DeleteNotFinished()
     
@@ -60,11 +52,6 @@ class DBManager():
     
         
     ###Delete all samples flagged as unfinished (Table BamInfo Column Finished == No)
-    """
-    BAM STRING, ID INT, BedID INTEGER, Version STRING, Reduced INTEGER, 
-    Subsamples INTEGER, MD5_CheckSum, FileClass, Finished STRING, 
-    Date STRING
-    """
     def DeleteNotFinished(self):
         conn = sqlite3.connect(self.pathDB)
         cur = conn.cursor()
@@ -80,9 +67,6 @@ class DBManager():
         )
         dataVCF = DataNotFinishedVCF.fetchall()
         conn.commit()
-        
-
-        #conn.commit()
         conn.close()
         
         for files in dataBam:
@@ -109,12 +93,12 @@ class DBManager():
         
         
         
-    ###Takes given dbpath argument and searches for database. If no database path is provided it will search at default path (current wd + 01_Result/Extraction.db)
+    ###Function to identify path to database
     def FindDatabase(self, dbpath):
         if dbpath:
             try:
                 if dbpath[0] == ".":
-                    dbpath = glob(os.getcwd() + "/" + dbpath)[0]  #If user passed e.g. ./path or ../../path via argparser
+                    dbpath = glob(os.getcwd() + "/" + dbpath)[0]  
                 else:
                     dbpath = glob(dbpath)[0]
                 booDB = True
@@ -151,7 +135,7 @@ class DBManager():
     
     
     
-    ###Create the main database if no database can be found
+    ###Function to create the main database if no database can be found
     def CreateDB(self):
         """
         Database tables:
@@ -240,10 +224,6 @@ class DBManager():
         
     ###Function to insert calculated data from other functions/classes to the database
     def InsertData(data, table, dbpath):
-        """
-        Depending on which kind of data is provided or which table is filled different INSERT command are used
-        The function is usually called by other functions from other classes in other scripts
-        """ 
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
         
@@ -265,7 +245,7 @@ class DBManager():
 
 
 
-    ###Change status of data in database if all data was extracted from .bam file
+    ###Change status of data in database if all data were extracted from .bam file
     def SecurityChangeData(dbpath, intID, version, tool):
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
@@ -290,67 +270,57 @@ class DBManager():
     kwargs: strReduce, bedid, boobed, boocheck, subsamples, ID, FileClass, ALL 
     """
     def ExtractData(table, dbpath, **kwargs):
-        """
-        Used by scripts which needs data from database (Preparation.py, PlotData.py, WriteCSV.py, PlotAll.py)
-        Depending on which data is needed, different SELECT commands are executed
-        """
+    
         #Initiale logging tool
         compylog = logging.getLogger("ComPy")
 
         if "boobed" in kwargs.keys():  
+            compylog.info("Extract bedids")
             data = DBManager.ExtractBedFileID(table, dbpath)
             return data
+            
         elif table == "Bedfiles" and "ALL" not in kwargs.keys() and "df" not in kwargs.keys():
+            compylog.info("Extract bed file targets")
             data = DBManager.ExtractBedFileTargets(
                 table, dbpath, kwargs["bedid"]
             )
             return data
+            
         elif table == "Bedfiles" and "df" in kwargs.keys():
+            compylog.info("Extract bedfile targets as dataframe")
             data = DBManager.ExtractBedFileDataframe(
                 table, dbpath, kwargs["bedid"]
             )
             return data
-        # elif table in ["BamInfo", "VCFInfo", "BedInfo"] \
-            # and "ALL" in kwargs.keys():
+
         elif "ALL" in kwargs.keys():
-            # print("YO")
+            compylog.info("Extract all info data")
             data = DBManager.ExtractAllInfoData(table, dbpath)
             return data
+            
         elif table in ["BamInfo", "VCFInfo", "BedInfo"] \
             and "ALL" not in kwargs.keys() \
             and "ID" not in kwargs.keys():
+            compylog.info("Extract specific info data")
             data = DBManager.ExtractFileTypeAdapter(table, dbpath, kwargs)
             return data
-        # elif table not in ["BamInfo", "VCFInfo", "BedInfo"] \
-            # and "ALL" in kwargs.keys():
-                # data = DBManager.ExtractAllData(table, dbpath)
-                # return data
+
         elif "ID" in kwargs.keys():
+            compylog.info("Extract data showing specific ID")
             dataFrm = DBManager.ExtractDataAdapter(table, dbpath, kwargs)
             return dataFrm
             
-    # def ExtractAllData(table, dbpath):
-        # conn = sqlite3.connect(dbpath)
-        # dfdata = pd.read_sql_query(
-            # f"SELECT * FROM {table};",
-            # conn
-        # )
-        # print("YO")
-        # cur = conn.cursor()
-        # data = cur.execute(f"SELECT BedID FROM {table};")
-        # rows = data.fetchall()
-        # conn.close()
-        # return dfdata
-    
+
+    ###Helper function to extract bed targets as dataframe
     def ExtractBedFileDataframe(table, dbpath, bedid):
         conn = sqlite3.connect(dbpath)
         data = pd.read_sql_query(
             f"SELECT * FROM {table} WHERE BedID == {bedid};", conn
         )
-        # print(data)
         conn.close()
         return data
     
+    ###Helper function to extract bed IDs
     def ExtractBedFileID(table, dbpath):
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
@@ -359,6 +329,7 @@ class DBManager():
         conn.close()
         return rows
     
+    ###Helper function to extract bedfile targets
     def ExtractBedFileTargets(table, dbpath, bedid):
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
@@ -370,29 +341,27 @@ class DBManager():
         conn.close()
         return rows
     
+    ###Helper function to extract info data as dataframe
     def ExtractAllInfoData(table, dbpath):
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
         data = pd.read_sql_query(f"SELECT * FROM {table};", conn)
-        #data = cur.execute(f"SELECT * FROM {table};")
-        #rows = data.fetchall()
-        #names = [x[0] for x in data.description]
         conn.close()
         return data    
     
-
+    ###Adapter function if bam or vcf info is needed
     def ExtractFileTypeAdapter(table, dbpath, allargs):
         if table == "BamInfo":
             return DBManager.ExtractTargetInfoDataBAM(
                 table, dbpath, allargs["bedid"], allargs["FileClass"], 
-                allargs["strReduce"], allargs["subsamples"]
+                allargs["strReduce"], allargs["subsamples"], allargs["flag"]
             )
         elif table == "VCFInfo":
             return DBManager.ExtractTargetInfoDataVCF(
                 table, dbpath, allargs["bedid"], allargs["FileClass"]
             )
 
-    
+    ###Helper function to extract specific bam data
     def ExtractTargetInfoDataBAM(table, dbpath, bedid, FileClass, strReduce, 
                                  subsamples, flag):
         if len(FileClass) > 1 \
@@ -403,13 +372,6 @@ class DBManager():
             if type(FileClass) == list:
                 FileClass = FileClass[0]
             key = f"== '{FileClass}'"
-        # print(
-            # f"SELECT * FROM {table} "
-            # +f"WHERE BedID == {bedid} "
-            # +f"AND Reduced == '{strReduce}' "
-            # +f"AND Subsamples == {subsamples} "
-            # +f"AND FileClass {key};"
-        # )
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
         data = cur.execute(
@@ -424,6 +386,7 @@ class DBManager():
         conn.close()
         return rows
     
+    ###Helper function to extract specific vcf data
     def ExtractTargetInfoDataVCF(table, dbpath, bedid, FileClass):
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
@@ -435,8 +398,8 @@ class DBManager():
         rows = data.fetchall()
         conn.close()
         return rows
-        
-        
+    
+    ###Adapter function to determine if one or more data should be extracted
     def ExtractDataAdapter(table, dbpath, allargs):
         try:
             if allargs["ID"] == int(allargs["ID"]):
@@ -452,50 +415,25 @@ class DBManager():
 
         dfdata = DBManager.ExtractDataFrame(table, dbpath, kword, allargs)
         return dfdata
-        
+    
+    ###Helper function to extract data in dataframe
     def ExtractDataFrame(table, dbpath, kword, allargs):
-        conn = sqlite3.connect(dbpath)
-        # try: 
+        conn = sqlite3.connect(dbpath) 
         intID = allargs["ID"]
         dfdata = pd.read_sql_query(
             f"SELECT * FROM {table} "
             +f"WHERE ID {kword} {intID} ",
             conn
-       )
-
-        
-        
+        )
         conn.close()
         return dfdata
         
     
-    
-        
 
-        
-        
-        
-        
-        
-            
     
 
     """
     Function to delete data from the database
-    Only called if user wants to delete data
-        short info: .bed files cannot be removed from database
-    
-    Two types of data deletion are supported:
-        1) User defined deletion   
-            Data will be deleted when fit parameters:
-                .bam name
-                .bed identifier (BED ID)
-                Was .bed file reduced?
-                How many subsamples?
-        2) Database cleaning
-            Data will be deleted accourding to version
-            Only data with version not appearing in list of compatible versions (see ComPy.py, section parse the arguments) will be deleted
-            --CLEAN or -clean parameter has to be given in the command line!
     kwargs:
         bedid, dbpath, checksum, reduceBed, intSub, booClean, lsCompVers, FileClass
     """
@@ -518,19 +456,19 @@ class DBManager():
         
         if "booClean" in kwargs.keys():
             databam = DBManager.GetDataCleanBam(dbpath, kwargs["lsCompVers"])
-            for row in databam: 
+            for intID in databam: 
                 DBManager.DelDataBam(
-                    dbpath, row[0], row[1], row[2], row[3], row[4]
+                    dbpath, intID
                 )
             datavcf = DBManager.GetDataCleanVCF(dbpath, kwargs["lsCompVers"])
-            for row in datavcf: 
-                DBManager.CleanDataDelVCF(
-                    dbpath, row[0], row[1], row[2]
+            for intID in datavcf: 
+                DBManager.DelDataVcf(
+                    dbpath, intID
                 )
             
             
             
-            
+    ###Helper function to delete vcf data
     def DelDataVcf(dbpath, ID): 
         #Initiale logging tool
         compylog = logging.getLogger("ComPy")
@@ -554,7 +492,7 @@ class DBManager():
         conn.close()
         
   
-            
+    ###Helper function to delete bam data
     def DelDataBam(dbpath, ID):
         #Initiale logging tool
         compylog = logging.getLogger("ComPy")
@@ -583,43 +521,37 @@ class DBManager():
         conn.close()
         
         
-        
+    ###Helper function to identify outdated bam data
     def GetDataCleanBam(dbpath, lsCompVers):   
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
         if len(lsCompVers) > 1:
             data = cur.execute(
-                "SELECT ID, BedID, Reduced, Subsamples, "
-                +f"FileClass FROM BamInfo WHERE Version NOT IN {lsCompVers}"
+                f"SELECT ID FROM BamInfo WHERE Version NOT IN {lsCompVers}"
             )
         else:
             versions = lsCompVers[0][0]
             data = cur.execute(
-                "SELECT ID, BedID, Reduced, Subsamples, "
-                +"FileClass FROM BamInfo WHERE Version IS NOT "
+                "SELECT ID FROM BamInfo WHERE Version IS NOT "
                 +f"'{versions}'"
             )
         row = data.fetchall()       
         return row
         
-    
-    
             
-        
+    ###Helper function to identify outdated vcf data
     def GetDataCleanVCF(dbpath, lsCompVers):
         conn = sqlite3.connect(dbpath)
         cur = conn.cursor()
         if len(lsCompVers) > 1:
                 data = cur.execute(
-                    "SELECT ID, BedID, FileClass "
-                    +"FROM VCFInfo "
+                    "SELECT ID FROM VCFInfo "
                     +f"WHERE Version NOT IN {lsCompVers}"
                 )
         else:
             versions = lsCompVers[0][0]
             data = cur.execute(
-                "SELECT ID, BedID, FileClass "
-                +"FROM VCFInfo "
+                "SELECT ID FROM VCFInfo "
                 +f"WHERE Version IS NOT '{versions}'"
             )
         row = data.fetchall()
@@ -627,137 +559,4 @@ class DBManager():
         conn.close()
         return row
     
-    
-    
-    
-    # ###Check if file was already added to database
-    # #Is used by script Preparation.py
-    # """
-    # DB table header BAM:
-    # BAM STRING, ID INT, BedID INTEGER, Version STRING, Reduced INTEGER, 
-    # Subsamples INTEGER, MD5_CheckSum, FileClass, Finished STRING, 
-    # Date STRING
-    
-    # DB table header VCF
-    # VCF_name, ID INT, BedID INTEGER, Version, MD5_CheckSum, 
-    # FileClass, Finished, Date
-    # """
-    # def CheckDB(bedid, dbpath, checksum, filetype, strReduce, intSubsample,
-    #             fileclass):
-        
-    #     #Initiale logging tool
-    #     compylog = logging.getLogger("ComPy")
-        
-    #     conn = sqlite3.connect(dbpath)
-    #     cur = conn.cursor()
-    #     booAdd = True
-    #     if filetype == "bam":
-    #         bamnames = cur.execute("SELECT * FROM {}".format("BamInfo"))
-    #         rows = bamnames.fetchall()
-    #         for bamfiles in rows:
-    #             if bamfiles[2] == bedid \
-    #                 and bamfiles[4] == strReduce \
-    #                     and bamfiles[5] == intSubsample \
-    #                         and bamfiles[6] == checksum \
-    #                             and bamfiles[7] == fileclass \
-    #                                 and bamfiles[8] == "Yes":
-    #                 compylog.info(
-    #                     f"The bamfile: '{bamfiles[0]}' was already added to "
-    #                     +f"the database! Reduced: {strReduce}, "
-    #                     +f"Version: {bamfiles[3]}, Subsamples: {intSubsample}, "
-    #                     +f"FileClass: {fileclass}, ID: {bamfiles[1]}, "
-    #                     +f"MD5_Sum: {checksum}"
-    #                 )
-    #                 booAdd = False
-    #                 intID = bamfiles[1]
-    #                 break
-    #     else:
-    #         vcfnames = cur.execute("SELECT * FROM {}".format("VCFInfo"))
-    #         rows = vcfnames.fetchall()
-    #         for vcffiles in rows:
-    #             #print(vcffiles)
-    #             #print(bedid)
-    #             #print(checksum)
-    #             #print(fileclass)
-    #             if vcffiles[2] == bedid \
-    #                 and vcffiles[4] == checksum \
-    #                     and vcffiles[5] == fileclass \
-    #                         and vcffiles[6] == "Yes":
-    #                 compylog.info(
-    #                     f"The VCFfile: '{vcffiles[0]}' was already added "
-    #                     +f"to the database! ID: {vcffiles[1]}, BedID: {bedid},"
-    #                     +f"MD5_Sum: {checksum}, FileClass: {fileclass}"
-    #                 )
-    #                 booAdd = False
-    #                 intID = vcffiles[1]
-    #                 #print(checksum)
-    #                 #print("HIT!")
-    #                 break
-    #         #print(booAdd)
-    #     if booAdd:
-    #         try:
-    #             allIds = [x[1] for x in rows]
-    #             #print(allIds)
-    #             #print("bin ich hier?")
-    #             #print(checksum)
-    #             #print(booAdd)
-    #             #sys.exit()
-    #             booIDbetween = False
-    #             for number in range(1, len(allIds)):
-    #                 # print(f"Number: {number}")
-    #                 # print(f"Control: {allIds[number-1]}")
-    #                 if number != allIds[number-1]:
-    #                     intID = number
-    #                     booIDbetween = True
-    #                     break
-    #             if not booIDbetween:
-    #                 intID = len(allIds) + 1
-    #         except Exception as e:
-    #             compylog.info(
-    #                 "No file yet added to database"
-    #             )
-    #             print(e)
-    #             intID = 1
-        
-    #     #print(intID)
-    #     #print(booAdd)
-    #     #sys.exit()
-    #     return booAdd, intID
-        
-        
-        
-        
-        
-    ###Get .bed ID for .bed file recovery
-    def GetBedID(bam, pathDB):
-        
-        #Initiale logging tool
-        compylog = logging.getLogger("ComPy")
-        
-        conn = sqlite3.connect(pathDB)
-        cur = conn.cursor()
-        if "/" in bam:
-            bam = bam.split("/")[-1]
-        if "." in bam:
-            bam = bam.split(".")[0]
-        data = cur.execute(
-            f"SELECT BedID FROM BamInfo WHERE BAM == '{bam}';"
-        )
-        rows = data.fetchall()
-        conn.close()
-        if len(rows) > 1:
-            print("The .bam file {} was associated with more then one .bed file. Please use 'extract info' for more information".format(bam))
-            compylog.critical("The .bam file {} was associated with more then one .bed file. Please use 'extract info' for more information".format(bam))
-            compylog.info("System interrupts!")
-            sys.exit()
-        if len(rows) < 1:
-            print("No .bam file was found in database with this name ({}). Please use 'extract info' for more information".format(bam))
-            compylog.info("No .bam file was found in database with this name ({}). Please use 'extract info' for more information".format(bam))
-            compylog.info("System interrupts!")
-            sys.exit()
-        return rows
-        
-        
-        
-        
     
