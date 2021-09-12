@@ -40,9 +40,11 @@ class PlotCompAll():
             
             
         ###Define global variables
-        self.pathDB = pathDB                                                   #Path to current database
+        self.pathDB = pathDB                                                   
         self.out = output
         self.compylog = logging.getLogger("ComPy")
+        
+        ###Get file IDs
         dicID = {}
         self.dicNames = {}
         for k in dicIDs["bam"].keys():
@@ -57,8 +59,6 @@ class PlotCompAll():
         ###Start comparison
         pool = multiprocessing.Pool(processes=threads)
         lsJobs = []
-        print(self.dicID)
-        print(self.dicNames)
         if len(self.dicID.keys()) > 0:
             for count in self.dicID.keys():
                 lsJobs.append(
@@ -76,13 +76,12 @@ class PlotCompAll():
             self.compylog.info("Finished big comparison of all data")
         
         
-
+    ###Helper function to check data integrity
     def CreateDetailedDict(self, dicID, fileclasses):
         dfAll = DBManager.ExtractData(
             "BamInfo", self.pathDB, ALL = True
         )
         dfAll = dfAll.loc[dfAll["ID"].isin(dicID.keys())]
-        #print(dfAll)
         dicReturn = {}
         if type(fileclasses) != bool:
             dfAll = dfAll.loc[
@@ -120,7 +119,7 @@ class PlotCompAll():
             
             
         
-        
+    ###Helper function to manage plotting of each file
     def DoPlotting(self, count, dtime):
         for intID in self.dicID[count][1]:
             group = self.dicID[count][0]
@@ -129,7 +128,6 @@ class PlotCompAll():
             if dicOldBam:
                 AllStats, AllQC, AllMapp  = self.GetData(dicOldBam, count)
                 self.compylog.info("Extracted all dataframes from database!")
-                #if booComp:
                 self.compylog.info(
                     f"Start plotting big comparison of sample {self.dicNames[intID][0]}"
                 )
@@ -149,7 +147,7 @@ class PlotCompAll():
                 pass
                 
 
-
+    ###Helper function to extract needed info files
     def GetDataInfo(self, intID):
         dfInfoSample = DBManager.ExtractData(
             "BamInfo", self.pathDB, ID = intID
@@ -167,9 +165,8 @@ class PlotCompAll():
     
     
     
-    
+    ###Helper function to check if sufficient data is present to do analysis
     def CheckSamples(self, intID, dfInfoSample, group):
-        #Extract all .bam samples from database with current .bed identifier
         bedid = dfInfoSample["BedID"].values[0]
         if dfInfoSample["Reduced"].values[0] == 0:
             strReduced = "No"
@@ -179,13 +176,11 @@ class PlotCompAll():
             strReducedDB = 1
         subsamples = dfInfoSample["Subsamples"].values[0]
         flag = dfInfoSample["Flag"].values[0]
-        #fileclass = group
         lsAllData = DBManager.ExtractData(
             "BamInfo", self.pathDB, bedid = bedid, 
             strReduce = strReducedDB, subsamples = subsamples,
-            FileClass = group , Flag = flag
+            FileClass = group , flag = flag
         )    
-        # print(lsAllData)
         if len(lsAllData) < 5:
             strMsg = str(
                  f"To few samples to do comparison for group {group}. Please add more! "
@@ -198,10 +193,6 @@ class PlotCompAll():
         else:
             dicFilteredData = {}
             for data in lsAllData:
-                # booPop = False
-                # if data[1] == intID:
-                    # booPop = True
-                # if not booPop:
                 dicFilteredData[data[1]] = data[0]
                 self.compylog.info(
                     f"Data from database: {dicFilteredData.values()}"
@@ -215,56 +206,43 @@ class PlotCompAll():
                 )
                 return dicFilteredData
 
-        
-        # self.compylog.info("New data: {dicFilteredData.values()}")
-        
-        #print(dicFilteredData)
+
         
 
     
 
-    
+    ###Helper function to extract needed data from database
     def GetData(self, dicOldBam, count):
         
-        #Collect needed information from database
+        #Get all IDs
         lsIDs = list(dicOldBam.keys()) + self.dicID[count][1]
+        
+        #Extract table readstatistics
         dfStats = DBManager.ExtractData(
             "ReadStatistiks", self.pathDB, ID = lsIDs
         )
-        #dfStats["BedID"] = pd.to_numeric(dfStats["BedID"])
         dfStats["Start"] = pd.to_numeric(dfStats["Start"])
         dfStats["End"] = pd.to_numeric(dfStats["End"])
         dfStats["Mapped"] = pd.to_numeric(dfStats["Mapped"])
         dfStats["MeanC"] = pd.to_numeric(dfStats["MeanC"])
         dfStats["GC"] = pd.to_numeric(dfStats["GC"])
-        #dfStats["Subsamples"] = pd.to_numeric(dfStats["Subsamples"])
         
+        #Extract QC table
         dfQC = DBManager.ExtractData(
             "QCmetrics", self.pathDB, ID = lsIDs
         )
         
+        #Extract read number table
         dfMapp = DBManager.ExtractData(
             "ReadMapping", self.pathDB, ID = lsIDs
         )
         dfMapp["Total"] = pd.to_numeric(dfMapp["Total"])
-        
-        # intnumsamples = len(set(dfStats["ID"].values))
-        # if intnumsamples < 5:
-            
-            # strMsg = str("To few samples to do comparison. Please add more! "
-                         # + "At least 5 samples are needed, at now only "
-                         # + f"{intnumsamples} samples are stored in database.."
-                     # )
-            # print(strMsg)
-            # self.compylog.error(strMsg)
-            # booComp = False
-        # else:
-            # booComp = True
+
         return dfStats, dfQC, dfMapp
     
     
     
-    
+    ###Helper function to create plot base
     def CreatePlotGrid(self, bamfile, NumChrom):
         imgFigu = plt.figure(figsize = (18, 21))
         imgFigu.suptitle(
@@ -287,10 +265,11 @@ class PlotCompAll():
         
     
     
-    
+    ###Helper function to plot database comparison
     def SubPlotBase(self, intID, AllStats, AllQC, dicOldBam, dfInfoBam, 
                     dfInfoVcf, dfInfoBed, AllMapp, dfInfo, group):
-        ###Collect sample metadata
+        
+        #Collect sample metadata
         bedid = dfInfo["BedID"].values[0]
         if dfInfo["Reduced"].values[0] == 0:
             strReduced = "No"
@@ -300,12 +279,12 @@ class PlotCompAll():
         fileclass = dfInfo["FileClass"].values[0]
         flag = dfInfo["Flag"].values[0]
         
-        ###Initialize data
+        #Initialize data
         dfUsedDataStats = AllStats.loc[AllStats["ID"] == intID]
         dfUsedDataQC = AllQC.loc[AllQC["ID"] == intID]
         dfUsedDataMap = AllMapp[AllMapp["ID"] == intID]
 
-        ###Bed file information
+        #Bed file information
         numTargets = len(dfUsedDataStats["MeanC"].values)
         meanGC = round(statistics.mean(dfUsedDataStats["GC"]) * 100, 3)
         lsTargetSize = abs(
@@ -315,7 +294,7 @@ class PlotCompAll():
         minTarget = min(lsTargetSize)
         avrgTarget = round(statistics.mean(lsTargetSize), 3)
         
-        ###Database information
+        #Database information
         numBedfiles = len(dfInfoBed)
         numTotalBam = len(dfInfoBam)
         numTotalVcf = len(dfInfoVcf)
@@ -337,7 +316,7 @@ class PlotCompAll():
                 sizeDb = f"{sizeDb} {dicSize[Counter]}"
                 booRed = False
         
-        ###Calculation information
+        #Calculate information
         numSamples = len(set(AllStats["BAM"].values))
         numUncovTrgt = len([x for x in dfUsedDataStats["MeanC"] if x == 0])
         maxCov = max(dfUsedDataStats["MeanC"].values)
@@ -352,9 +331,7 @@ class PlotCompAll():
         ].values[0]
         numTotalReads = sum(dfUsedDataMap["Total"].values)
         
-        
-        
-        
+        #Create tables
         lsTableSampleBedfile = [
             [
                 "ID", intID, 
@@ -403,12 +380,12 @@ class PlotCompAll():
                 "Used groups, flag", [group, flag]
             ],
         ]
+        
+        #Plot tables
         table_a = self.ax7.table(
                 cellText = lsTableSampleBedfile,
                 colLabels = (" ", "Sample info", " ", "Bed file info"),
                 bbox = (0, 0, 1, 1),
-                # fontsize = (8),
-                # colWidths = [0.8]
         )
         self.ax7.axis("off")
         self.ax7.axis("tight")
@@ -432,8 +409,6 @@ class PlotCompAll():
                 cellText = lsTableDatabaseCalculation,
                 colLabels = (" ", "Database Info", " ", "Calculation Info"),
                 bbox = (0, 0, 1, 1),
-                # fontsize = (8),
-                # colWidths = [0.8]
         )
         table_b.get_celld()[(0,1)].set_facecolor(strColor)
         table_b.get_celld()[(0,3)].set_facecolor(strColor)
@@ -451,39 +426,13 @@ class PlotCompAll():
         self.ax11.axis("off")
         self.ax11.axis("tight")
         self.ax11.set()
-        # self.ax11.table(
-        #     colLabels = ("Bed file info",),
-        #     cellText = [
-        #         [numSamples], [numTargets], [maxTarget], [minTarget], [avrgTarget],
-        #         [meanGC]
-        #     ],
-        #     rowLabels = [
-        #         "Number of files with bed ID", "Number targets in bed file",
-        #         "Largest target size", "Smallest target size", 
-        #         "Average target size", "Average gc content"
-        #     ],
-        #     bbox = (1, 0, 1, 1),
-        #     fontsize = 8,
-        #     colWidths = [0.8]
-        # )
-        # self.ax11.axis("off")
-        # self.ax11.axis("tight")
-        # self.ax11.set()
         
-        # sns.scatterplot(
-            # y="GC", x="MeanC", data=dfUsedDataStats, alpha=0.4, ax=self.ax7
-        # )
-        # self.ax7.set(
-            # title="GC vs mean coverage per .bed file targets"
-        # )
         
-        ###Plot Coverage
+        #Plot Coverage
         sns.boxplot(
             y = "MeanC", x = "Chrom", data = dfUsedDataStats, ax = self.ax8, 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
-        # sns.violinplot(y="MeanC", x="Chrom", data=dfUsedDataStats, ax=self.ax8, cut=0, inner="stick", scale="width")
-        # self.ax8.set_ylim(0,max(dfUsedDataStats["MeanC"]+max(dfUsedDataStats["MeanC"]*0.1)))
         self.ax8.set(
             title = "MeanC per target on each chromosome", 
             xlabel = "Chromosome", 
@@ -495,8 +444,7 @@ class PlotCompAll():
             )
         self.ax8.grid(False)
         
-        ###Plot QC
-
+        #Plot QC
         #Mate 1
         self.ax9.set(title = "Read QC mate 1", xlabel = "Read nucleotide")
         dfMate1 = dfUsedDataQC.loc[dfUsedDataQC["Mate"] == "1"]
@@ -563,48 +511,27 @@ class PlotCompAll():
         axes[1].set_ylim(0, 1)
         axes[1].grid(False)
         
-        # axes[1].plot(
-        #     dfMate2["ReadCount"].values, 
-        #     color = self.styleyaml["qcplot"]["lengthdist"]
-        # )
-        # axes[1].set(
-        #     ylabel = "% of reads showing this length",
-        #     ylim = (-0.01, 1)
-        # )
-        # axes[1].grid(False)
-        # self.ax10.legend(
-        #     ["mean PHRED", "Length distribution"], 
-        #     #labelcolor = ["blue","orange"]
-        # )
         
         
 
             
             
             
-            
+    ###Helper function to plot QC and Coverage
     def SubPlotCompare(self, dfStats, intID, dicOldBam, dfMapp):
-        
-        ###Calculate the data
         
         #Slice whole dataframe according to used .bam file 
         dfBamStats = dfStats.loc[dfStats["ID"] == intID]
         dfAllStats = dfStats.loc[dfStats["ID"].isin(dicOldBam.keys())]
         dfMapStatsTarget = dfMapp.loc[dfMapp["ID"] == intID]
         dfMapStatsAll = dfMapp.loc[dfMapp["ID"].isin(dicOldBam.keys())]
-        
-        # Calculate target size in MB
-        # dfTargetMB = abs(dfBamStats["Start"] - dfBamStats["End"]) / 1_000_000
-        
-        #dfWholeData = pd.DataFrame()
-        
+
         #Calculate mean coverage
         intMeanCov = dfBamStats["MeanC"].mean()
         lsMeanRest = []
         for intID in dfAllStats["ID"]:
             flMean = dfAllStats.loc[dfAllStats["ID"] == intID]["MeanC"].mean()
             lsMeanRest.append(flMean)
-        
         
         #Calculate mean coverage of GC rich regions
         intMeanCovGC = dfBamStats.loc[dfBamStats["GC"] > 0.5]["MeanC"].mean()
@@ -652,16 +579,8 @@ class PlotCompAll():
                         ]["Total"].sum()
                 )*100
             )
-        
-        # #Number of heterozygot positions (2 nucleotide difference and AF >0.1) per MB
-        # intNumHet = dfBamStats["Hetero"].sum()/dfTargetMB.sum()
-        # lsHetOld = []
-        # for oldfile in oldfiles:
-            # lsHetOld.append(dfAllStats.loc[dfAllStats["BAM"] == oldfile]["Hetero"].sum()/dfTargetMB.sum())
-        
 
-        ###Plot the data
-        
+        #Plot the data
         #Mean coverage
         dfMeanDatabase = pd.DataFrame()
         dfMeanDatabase["Mean"] = lsMeanRest
@@ -669,8 +588,8 @@ class PlotCompAll():
             y = dfMeanDatabase["Mean"], ax = self.ax1, orient = "vertical", 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
-        self.ax1.axes.get_xaxis().set_visible(False)    #Keine x-Axe
-        #self.ax1.set_frame_on(False)                    #Makes it transparent
+        self.ax1.axes.get_xaxis().set_visible(False)    
+        #self.ax1.set_frame_on(False)                    
         self.ax1.set(title = "Mean coverage \n", ylabel = "coverage")
         self.ax1.scatter(
             [0], [intMeanCov], s = 200, linewidth = 2, zorder = 10,
@@ -687,8 +606,7 @@ class PlotCompAll():
             ax = self.ax2, orient = "vertical", 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
-        self.ax2.axes.get_xaxis().set_visible(False)    #Keine x-Axe
-        #self.ax2.set_frame_on(False)                    #Makes it transparent
+        self.ax2.axes.get_xaxis().set_visible(False)    
         self.ax2.set(
             title = "Mean coverage \n GC rich regions", ylabel = "coverage"
         )
@@ -698,8 +616,7 @@ class PlotCompAll():
             marker = self.styleyaml["boxplots"]["markerstyle"] 
         )
         self.ax2.grid(False)
-
-            
+   
         #Mean coverage of AT rich regions
         dfAtMean = pd.DataFrame()
         dfAtMean["Mean"] = lsAtRest
@@ -708,8 +625,7 @@ class PlotCompAll():
             ax = self.ax3, orient = "vertical", 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
-        self.ax3.axes.get_xaxis().set_visible(False)    #Keine x-Axe
-        #self.ax3.set_frame_on(False)                    #Makes it transparent
+        self.ax3.axes.get_xaxis().set_visible(False)                      
         self.ax3.set(
             title = "Mean coverage \n AT rich regions", ylabel = "coverage"
         )
@@ -719,15 +635,13 @@ class PlotCompAll():
             marker = self.styleyaml["boxplots"]["markerstyle"] 
         )
         self.ax3.grid(False)
-
-            
+   
         #Mean coverage variance
         sns.boxplot(
             y = lsVarOld, ax = self.ax4, orient = "vertical", 
             palette = self.styleyaml["boxplots"]["colorcode"]
         )
-        self.ax4.axes.get_xaxis().set_visible(False)    #Keine x-Axe
-        #self.ax4.set_frame_on(False)                    #Makes it transparent
+        self.ax4.axes.get_xaxis().set_visible(False)                       
         self.ax4.set(
             title = "Coverage variance \n", ylabel = "variance"
         )
@@ -752,7 +666,6 @@ class PlotCompAll():
         )
         self.ax5.grid(False)
         
-        
         #Coverage pie chart
         tmpfile = self.imgFigu.add_subplot(self.ax6)
         uprthrsh = self.styleyaml["pieplot"]["highest"]
@@ -770,9 +683,6 @@ class PlotCompAll():
         under20 = len(
             [x for x in dfBamStats["MeanC"] if x <= lwrthrsh]
         )
-        #above50 = len([x for x in dfCov["AN14023706"] if x <= 100 and x > 50])
-        #above20 = len([x for x in dfCov["AN14023706"] if x <= 50 and x > 20])
-        #below20 = len([x for x in dfCov["AN14023706"] if x <= 20])
     
         totalnum = len([x for x in dfBamStats["MeanC"]])  
         lsPerc = []
@@ -798,10 +708,8 @@ class PlotCompAll():
         
     
     
-    
+    ###Helper function to save plots
     def SavePlot(self, intID, dtime):
-            
-        #Save plot
         with PdfPages(
                 self.out + f"BigCompare/{dtime}_{self.dicNames[intID][0]}.pdf"
                 ) as pdfFile:
