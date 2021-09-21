@@ -15,7 +15,7 @@ If that prerequisite is met, you can either do an installation using Anaconda (*
 
 Another way to install compy is to download the package directly from pypy.org via PIP installer
 
-	pip install compy matplotlib>=3.3 numpy>=1.19 pandas>=1.2 pip>=20.3 pypdf2>=1.26 pysam>=0.15 python>=3.7,<3.10.0a0 pyyaml>=5.4 seaborn>=0.11 tqdm >=4.55 xlsxwriter >=1.3
+	pip install compy matplotlib>=3.3 numpy>=1.19 pandas>=1.2 pip>=20.3 pypdf2>=1.26 pysam>=0.15 python>=3.7,<3.10.0a0 pyyaml>=5.4 seaborn>=0.11 tqdm>=4.55 xlsxwriter>=1.3
 
 and explore the main program functions using
 
