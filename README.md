@@ -9,7 +9,7 @@ A python based tool to compare .bam and .vcf files using a SQLite3 database.
 ComPy has two possibilities to get the program running. But first of all you have to make sure your operating system is **LINUX** and nothing else, since ComPy was designed for this system only. This is mainly due to package incompatibility. 
 If that prerequisite is met, you can either do an installation using Anaconda (**recommended!**). Anaconda is a package organization system using so called virtual environments to make it a lot easier to manage 
 
-	conda create -n ENVNAME compy
+	conda create -n ENVNAME -c kutzo -c bioconda -c conda-forge -c anaconda compytool
 	conda activate ENVNAME
 
 
