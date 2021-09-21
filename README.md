@@ -18,7 +18,7 @@ and explore the main program functions using
 
 Another way to install compy is to download the package directly from pypy.org via PIP installer
 
-	pip install compy matplotlib>=3.3 numpy>=1.19 pandas>=1.2 pip>=20.3 pypdf2>=1.26 pysam>=0.15 python>=3.7,<3.10.0a0 pyyaml>=5.4 seaborn>=0.11 tqdm >=4.55 	xlsxwriter >=1.3
+	pip install compy matplotlib>=3.3 numpy>=1.19 pandas>=1.2 pip>=20.3 pypdf2>=1.26 pysam>=0.15 python>=3.7,<3.10.0a0 pyyaml>=5.4 seaborn>=0.11 tqdm >=4.55 xlsxwriter >=1.3
 
 
 ___
@@ -28,7 +28,7 @@ ___
 
 # 1.2 Testing
 
-You may noticed that ComPy comes with two more folders: *additional_data* and *test_data*. Those folders are made to help you learning the program. Before you start the testing please make sure to download the **GRCh37 (hg19) reference genome** from any kind of source. You may download it from here [LINK](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.13/) or here [FTP-LINK](ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.fna.gz). Afterwards, clone the GIT repository to get access to the test data set. 
+You may noticed that ComPy comes with two more folders: *additional_data* and *test_data*. Those folders are made to help you learning the program. Before you start the testing please make sure to download the **GRCh37 (hg19) reference genome** from any kind of source. You may download it from here [LINK](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.13/) or here (ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.fna.gz). Afterwards, clone the GIT repository to get access to the test data set. 
 
 	git clone https://g27vmgitlab.med.tu-dresden.de/KUTZOLIVE/compy.git
 	cd compy/
@@ -42,8 +42,8 @@ ComPy provides the *compare* function which allows you to calculate with both .b
 	cd YOURPATHTOCOMPY/compy/
 	ComPy compare all -b ./test_data/*.bam -v ./test_data/*.vcf -o ./ComPyOut/ -r YOURPATHTOREFERENCE -e ./test_data/testbed.bed -f ./additional_data/Example_VCFplot.csv -a ./additional_data/Example_NameList_compare.csv 
 
-Here, ComPy will take all .bam and .vcf files from the *test_data* folder and save the results in the database *Extraction.db* at */home/USERNAME/ComPy/.database/*. The optional parameters used here are: .bed file reduction: False, Number of subsamples used for read QC: 1.000.000, file group: default. 
->**Note:** It is the most basic command to get all possible output. The optional parameters -f makes ComPy also draw vennplots defined by the given .csv file. Also ComPy takes the names provided by the -a parameter.
+Here, ComPy will take all .bam and .vcf files from the *test_data* folder and save the results in the database *Extraction.db* at */home/USERNAME/ComPy/.database/*. The optional parameters used here are: .bed file reduction: False, Number of subsamples used for read QC: 2.300.000, file group: default, flag filtered: 772. 
+>**Note:** It is the most basic command to get all possible output. Due to the optional parameter -f ComPy also draws vennplots defined by the given .csv file. Furthermore, ComPy takes the names provided by the -a parameter.
 
 
 Executing this command will create a new folder *ComPyOut* at you current working directory. There you can find another folder *Result_THISDATE* containing a .pdf, a .csv and one more folder *BigCompare*. The .csv contains information about the calculated data and which names are used to plot the results. The *Date_SampleComparison.pdf* includes plots which allows you to compare your samples. Providing both .bam and .vcf files and a VCFplot.csv will result in 6 different Plot types included in this .pdf. Details about how to interpret those can be found in *Detailed_Explainings.pdf*.
@@ -106,7 +106,7 @@ Here, ComPy will remove every entry showing the ID defined in the provided .csv 
 
 # 6. Merge databases
 
-Maybe you want to compare your data with those of your colleagues or them want to use your data? For this case (and ofc other) ComPy provides a function to merge databases. To do so, you need one of two prerequisites. Either the second database itself (you may export it with the export function) or all of the possible .xlsx files. If you provide the .xlsx files you have to make sure nothing was changed here, since ComPy needs them in the way it exports them. You need in total 7 database .xlsx files (*Bedinfo.xlsx, BamInfo.xlsx, QCmetrics.xlsx, ReadMapping.xlsx, ReadStatistiks.xlsx, VCFInfo.xlsx, Extracted_Variants.xlsx*) with exactly the naming they got by ComPy. Furthermore, you need all associated .bed files as *Bedfiles_Name.xlsx*. Those .bed file .xslx have to be provided to the function separately.
+Maybe you want to compare your data with those of your colleagues or them want to use your data? For this case (and ofc other) ComPy provides a function to merge databases. To do so, you need one of two prerequisites. Either the second database itself (you may export it with the export function) or all of the possible .xlsx files. If you provide the .xlsx files you have to make sure nothing was changed here, since ComPy needs them in the way it exports them. You need in total 7 database .xlsx files (*Bedinfo.xlsx, BamInfo.xlsx, QCmetrics.xlsx, ReadMapping.xlsx, ReadStatistiks.xlsx, VCFInfo.xlsx, Extracted_Variants.xlsx*) with exactly the naming they got by ComPy. Furthermore, you need all associated .bed files as *Bedfiles_Name.xlsx*. Those *Bedfiles_Name.xlsx* files have to be provided to the function separately.
 
 	ComPy merge -x PATHTOBAMVCFXLSX -b PATHTOBEDXLSX
 
