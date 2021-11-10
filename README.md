@@ -122,9 +122,9 @@ You may have noticed, that you can find a *Default.yaml* file in the folder *add
 
 Even though we have been constantly testing during programming, it might happen that you encounter an error or bug. Upsi :D... Here are some suggestions what to do:
 
-### 1 Stay calm and read the docs
+### 1 Was this error already reported?
 
-It often happens that an error occurs due to wrong insert files. So please make sure that you provided the right kind of data at each parameter. If you are not sure just re-read the point of interest in this manual.
+Maybe you can find a fitting solution already solved in the issue part of this repository.
 
 ### 2 Look at the Error message
 
